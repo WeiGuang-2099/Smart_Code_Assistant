@@ -11,7 +11,7 @@ An AI-powered code generation, review, and analysis platform built with FastAPI,
 ## Features
 
 ### AI Code Intelligence
-- **Code Generation** - Generate code from natural language descriptions using ZhipuAI GLM-4 models
+- **Code Generation** - Generate code from natural language descriptions using ZhipuAI GLM-5 series models
 - **Code Review** - Automated code review with scoring, issue detection, and improvement suggestions
 - **AI Chat** - Multi-turn conversational assistant for code-related questions with context history
 - **Streaming Responses** - Real-time SSE streaming for AI responses with heartbeat and tool events
@@ -52,7 +52,7 @@ An AI-powered code generation, review, and analysis platform built with FastAPI,
 |-------|-----------|
 | Frontend | React 19, TypeScript, Vite 7, Tailwind CSS 4 |
 | Backend | Python, FastAPI, SQLAlchemy 2.0 (async), Alembic |
-| AI/LLM | LangChain, ZhipuAI GLM-4 / OpenAI (switchable provider); LangGraph agent rewrite planned |
+| AI/LLM | LangChain, ZhipuAI GLM-5.2 / GLM-5.1 / GLM-4.7 or OpenAI (switchable provider); LangGraph agent rewrite planned |
 | Relational DB | MySQL 8.0 (via aiomysql) |
 | Graph DB | Neo4j 5.15 (code knowledge graph) |
 | Vector DB | ChromaDB (semantic search) |
@@ -90,7 +90,7 @@ flowchart TB
     end
 
     subgraph External["External"]
-        GLM["ZhipuAI GLM-4<br/>(via OpenAI-compatible API)"]
+        GLM["ZhipuAI GLM-5<br/>(via OpenAI-compatible API)"]
         Datalab["Datalab Marker<br/>(PDF -> MD)"]
     end
 
@@ -166,28 +166,28 @@ Before is the pre-traversal regex graph path (git `0d297e4`, 2026-06-18); after 
 
 graph_neighbor_recall nearly tripled (0.10 -> 0.29) and graph_traversal_correctness tripled (0.08 -> 0.24): the graph branch now walks real CALLS / inheritance / import edges from the semantic seeds instead of regex-matching entity names out of the question. Semantic-retrieval metrics moved only slightly (a re-indexing effect), since this work targets the graph branch.
 
-### Generation (GLM-4 generator, GLM-4-plus judge, prompt v1, n=50, 2026-06-18 baseline)
+### Generation (GLM-5.2 generator, GLM-5.1 judge, prompt v1, n=50, 2026-06-20 run)
 
 | Metric | Mean (1-5) | Share >= 4 |
 |---|---:|---:|
-| faithfulness | 4.64 | 84% |
-| answer_relevance | 3.48 | 54% |
+| faithfulness | 4.76 | 92% |
+| answer_relevance | 3.66 | 56% |
 
-Faithfulness is high (answers stay grounded in the retrieved context); answer relevance is the weaker axis, which tracks the retrieval gaps below. The run had 0 generation errors and 0 judge parse failures.
+Faithfulness is high (answers stay grounded in the retrieved context); answer relevance is the weaker axis, which tracks the retrieval gaps below. The run had 0 generation errors and 0 judge parse failures. The judge (GLM-5.1) is deliberately a different model from the generator (GLM-5.2) to reduce self-grading bias. An earlier GLM-4 generator / GLM-4-plus judge baseline (2026-06-18) scored 4.64 / 3.48; since both generator and judge changed, the two runs are not directly comparable.
 
 ### By category
 
-Retrieval columns are the 2026-06-20 run; faithfulness and answer_relevance are the 2026-06-18 generation baseline (not re-run).
+All columns are the 2026-06-20 run (GLM-5.2 generator, GLM-5.1 judge). Retrieval numbers were re-verified 2026-07-06 against a freshly re-indexed corpus and reproduced within noise.
 
 | Category | n | hit_rate@5 | recall@5 | mrr | faithfulness | answer_relevance |
 |---|---:|---:|---:|---:|---:|---:|
-| definition_lookup | 12 | 0.50 | 0.50 | 0.47 | 5.00 | 4.17 |
-| feature_lookup | 12 | 0.75 | 0.75 | 0.63 | 4.67 | 3.17 |
-| dependency_trace | 10 | 0.40 | 0.35 | 0.29 | 4.60 | 2.60 |
-| impact_analysis | 8 | 1.00 | 0.54 | 0.78 | 4.00 | 4.00 |
-| cross_file_flow | 8 | 0.63 | 0.42 | 0.50 | 4.75 | 3.50 |
+| definition_lookup | 12 | 0.50 | 0.50 | 0.47 | 4.67 | 4.33 |
+| feature_lookup | 12 | 0.75 | 0.75 | 0.63 | 5.00 | 2.17 |
+| dependency_trace | 10 | 0.40 | 0.35 | 0.29 | 5.00 | 3.90 |
+| impact_analysis | 8 | 1.00 | 0.54 | 0.78 | 5.00 | 4.25 |
+| cross_file_flow | 8 | 0.63 | 0.42 | 0.50 | 4.00 | 4.00 |
 
-The breakdown is the point of the harness: `impact_analysis` retrieves cleanly (hit_rate@5 1.00), while `dependency_trace` is the weakest end to end (recall@5 0.35, answer_relevance 2.60). Graph-neighbor metrics rose sharply after the traversal rework (graph_neighbor_recall 0.10 -> 0.29, graph_traversal_correctness 0.08 -> 0.24), and the harness then localized the remaining ceiling precisely: for "how does X work" questions the embedding model often ranks schema/exception classes (e.g. `UserRegister`, `TokenVersionManager`) above the endpoint or service function whose call/import neighbors actually answer the question, so the graph traversal seeds from the wrong nodes. That seed-selection problem -- not the graph itself -- is the dominant remaining lever, and is the explicit target of the Phase 2 hybrid-search / reranking work.
+The breakdown is the point of the harness: `impact_analysis` retrieves cleanly (hit_rate@5 1.00) and answers well, while `dependency_trace` remains the weakest retrieval category (recall@5 0.35, mrr 0.29). On the generation side `feature_lookup` scores lowest on answer_relevance (2.17) despite the strong retrieval -- and the transcripts show exactly why: the combined context passed to the generator contains only symbol names, file paths, and graph relations (no code bodies), so for "how does X work" questions GLM-5.2 correctly answers that the context is insufficient, and the judge scores that refusal low on relevance (while faithfulness stays 5.00 -- the model refuses rather than hallucinates). The retrieval layer already returns each hit's code content; the context builder just drops it. Including retrieved code in the generation context is the corresponding lever, alongside the retrieval-side seed-selection work below. Graph-neighbor metrics rose sharply after the traversal rework (graph_neighbor_recall 0.10 -> 0.29, graph_traversal_correctness 0.08 -> 0.24), and the harness then localized the remaining ceiling precisely: for "how does X work" questions the embedding model often ranks schema/exception classes (e.g. `UserRegister`, `TokenVersionManager`) above the endpoint or service function whose call/import neighbors actually answer the question, so the graph traversal seeds from the wrong nodes. That seed-selection problem -- not the graph itself -- is the dominant remaining lever, and is the explicit target of the Phase 2 hybrid-search / reranking work.
 
 **Known limitations.**
 - *Seeding dominates the graph-neighbor ceiling.* Traversal is seeded from the top semantic hits, so when semantic search surfaces the wrong node type (a schema class instead of the calling function), the right neighbors are never reached even though they exist in the graph. Verified by hand: seeding `register` directly yields its `get_password_hash` / `create_token_pair` neighbors at recall ~1.0.
