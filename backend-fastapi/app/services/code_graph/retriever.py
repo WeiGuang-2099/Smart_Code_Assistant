@@ -18,6 +18,29 @@ logger = logging.getLogger(__name__)
 RETRIEVAL_CACHE_TTL = 300
 GRAPH_SEED_COUNT = 5  # number of top semantic hits used to seed graph traversal
 
+# Seed-scoring priors. Eval evidence (spec 2026-07-07): for "how does X work"
+# questions the embedding model ranks schema/exception classes above the
+# entry-point function whose call/import neighbors answer the question, so
+# traversal seeds from the wrong nodes. Discount those node types for seed
+# ordering only -- semantic_results ordering is never touched.
+SEED_TYPE_WEIGHTS = {"function": 1.0, "class": 0.7}
+SEED_SCHEMA_PATH_PENALTY = 0.3   # Pydantic request/response models
+SEED_EXCEPTION_PENALTY = 0.4     # *Error / *Exception names, exceptions modules
+
+
+def _score_seed(metadata: Dict[str, Any], relevance_score: float) -> float:
+    """Seed priority = semantic relevance discounted by how unlikely the
+    node type is to have useful call/import neighbors."""
+    score = relevance_score * SEED_TYPE_WEIGHTS.get(
+        metadata.get("type"), SEED_TYPE_WEIGHTS["class"])
+    module_path = (metadata.get("module_path") or "").replace("\\", "/")
+    name = metadata.get("name") or ""
+    if "app/schemas/" in module_path:
+        score *= SEED_SCHEMA_PATH_PENALTY
+    if name.endswith(("Error", "Exception")) or "exceptions" in module_path:
+        score *= SEED_EXCEPTION_PENALTY
+    return score
+
 
 class CodeGraphRetriever:
     """代码图谱混合检索器"""
@@ -113,8 +136,11 @@ class CodeGraphRetriever:
 
 
     def _seed_entities_from_semantic(self, semantic_results, n: int) -> list:
-        """Pick the top-n semantic hits (merged across collections, ranked by
-        relevance_score) and map each to a graph-node seed descriptor."""
+        """Pick the top-n graph-traversal seeds from all semantic hits.
+
+        Ordering uses _score_seed (relevance discounted by node-type priors);
+        the semantic_results payload itself is never reordered. Descriptors
+        keep the raw relevance_score (Neo4j ranking contract)."""
         chunks = []
         if isinstance(semantic_results, dict):
             for lst in semantic_results.values():
@@ -122,7 +148,11 @@ class CodeGraphRetriever:
                     chunks.extend(c for c in lst if isinstance(c, dict))
         elif isinstance(semantic_results, list):
             chunks = [c for c in semantic_results if isinstance(c, dict)]
-        chunks.sort(key=lambda c: c.get("relevance_score", 0), reverse=True)
+        chunks.sort(
+            key=lambda c: _score_seed(c.get("metadata") or {},
+                                      c.get("relevance_score", 0)),
+            reverse=True,
+        )
 
         seeds = []
         for c in chunks[:n]:
