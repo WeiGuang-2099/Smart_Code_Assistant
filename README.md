@@ -152,45 +152,47 @@ The repo ships a runnable eval harness (`evals/`) that measures the GraphRAG pip
 
 ### Retrieval (golden set, n=50, 0 errors)
 
-Before is the pre-traversal regex graph path (git `0d297e4`, 2026-06-18); after is real graph-neighbor traversal seeded from the top semantic hits, plus import-name indexing and the module-level CALLS fix (2026-06-20), re-indexed against live Neo4j and ChromaDB.
+Before is the pre-traversal regex graph path (git `0d297e4`, 2026-06-18); after is real graph-neighbor traversal seeded from the top semantic hits, plus import-name indexing and the module-level CALLS fix (2026-06-20); "after seed scoring" adds type-aware seed scoring (git `cb60747`, 2026-07-07), which prefers function/method nodes over schema/exception classes when picking traversal seeds. All three are re-indexed against live Neo4j and ChromaDB.
 
-| Metric | Before (2026-06-18) | After (2026-06-20) |
-|---|---:|---:|
-| hit_rate@1 | 0.42 | 0.44 |
-| hit_rate@5 | 0.60 | 0.64 |
-| recall@5 | 0.50 | 0.52 |
-| mrr | 0.50 | 0.53 |
-| hybrid_hit_rate@5 | 0.60 | 0.64 |
-| graph_neighbor_recall | 0.10 | 0.29 |
-| graph_traversal_correctness | 0.08 | 0.24 |
+| Metric | Before (2026-06-18) | After (2026-06-20) | After seed scoring (2026-07-07) |
+|---|---:|---:|---:|
+| hit_rate@1 | 0.42 | 0.44 | 0.44 |
+| hit_rate@5 | 0.60 | 0.64 | 0.66 |
+| recall@5 | 0.50 | 0.52 | 0.53 |
+| mrr | 0.50 | 0.53 | 0.54 |
+| hybrid_hit_rate@5 | 0.60 | 0.64 | 0.68 |
+| graph_neighbor_recall | 0.10 | 0.29 | 0.36 |
+| graph_traversal_correctness | 0.08 | 0.24 | 0.28 |
 
-graph_neighbor_recall nearly tripled (0.10 -> 0.29) and graph_traversal_correctness tripled (0.08 -> 0.24): the graph branch now walks real CALLS / inheritance / import edges from the semantic seeds instead of regex-matching entity names out of the question. Semantic-retrieval metrics moved only slightly (a re-indexing effect), since this work targets the graph branch.
+graph_neighbor_recall went 0.10 -> 0.29 with real traversal (2026-06-20), then -> 0.36 once seeds were re-scored with node-type priors (2026-07-07); graph_traversal_correctness went 0.08 -> 0.24 -> 0.28. hybrid_hit_rate@5 moved above plain hit_rate@5 for the first time -- 0.64 -> 0.68, while hit_rate@5 itself only reached 0.66 -- meaning the graph branch is now surfacing correct hits the semantic branch alone misses (evals/results/20260706T212812Z.json). These numbers were measured in isolation, on the corpus as it stood before the code-body-context change below re-indexed it. That re-index re-embedded the ~60 lines the change added to `retriever.py`; since the golden set asks about this repo's own code, semantic hits shifted on a few cases and seeds followed, pushing graph_neighbor_recall further to 0.4333 and hybrid_hit_rate@5 to 0.72 on the current corpus (evals/results/20260706T215010Z.json). That further movement is corpus self-reference drift from re-indexing, not a second retrieval improvement -- the code-body-context change itself only touches `_build_combined_context`, which sits downstream of seed selection.
 
-### Generation (GLM-5.2 generator, GLM-5.1 judge, prompt v1, n=50, 2026-06-20 run)
+### Generation (GLM-5.2 generator, GLM-5.1 judge, prompt v1, n=50 per run)
 
-| Metric | Mean (1-5) | Share >= 4 |
-|---|---:|---:|
-| faithfulness | 4.76 | 92% |
-| answer_relevance | 3.66 | 56% |
+| Metric | Baseline (2026-06-20) | After seed scoring only (2026-07-06) | After code-body context (2026-07-06) |
+|---|---:|---:|---:|
+| faithfulness | 4.76 (92%) | 4.88 (94%) | 4.72 (92%) |
+| answer_relevance | 3.66 (56%) | 3.34 (42%) | 4.20 (68%) |
 
-Faithfulness is high (answers stay grounded in the retrieved context); answer relevance is the weaker axis, which tracks the retrieval gaps below. The run had 0 generation errors and 0 judge parse failures. The judge (GLM-5.1) is deliberately a different model from the generator (GLM-5.2) to reduce self-grading bias. An earlier GLM-4 generator / GLM-4-plus judge baseline (2026-06-18) scored 4.64 / 3.48; since both generator and judge changed, the two runs are not directly comparable.
+Seed scoring alone (commit `cb60747`) moved answer_relevance the wrong way at first -- 3.66 -> 3.34 (evals/results/20260706T213622Z.json) -- because better graph seeds surfaced more code the generator still couldn't see the body of. Adding retrieved code bodies to the combined context (commit `54b6ba8`) moved it to 4.20, above both prior runs (evals/results/20260706T215528Z.json); per category, feature_lookup answer_relevance went 2.17 (2026-06-20) -> 2.50 (seed scoring only) -> 3.83 (code bodies). Faithfulness stays above the 4.5 guard throughout (4.76 -> 4.88 -> 4.72); the small dip on the final run is the expected cost of the model actually answering instead of refusing. The run had 0 generation errors and 0 judge parse failures. The judge (GLM-5.1) is deliberately a different model from the generator (GLM-5.2) to reduce self-grading bias. An earlier GLM-4 generator / GLM-4-plus judge baseline (2026-06-18) scored 4.64 / 3.48; since both generator and judge changed, that run is not directly comparable to any of these.
 
 ### By category
 
-All columns are the 2026-06-20 run (GLM-5.2 generator, GLM-5.1 judge). Retrieval numbers were re-verified 2026-07-06 against a freshly re-indexed corpus and reproduced within noise.
+Retrieval columns (hit_rate@5, recall@5, mrr) are the 2026-06-20 traversal run, re-verified 2026-07-06 against a freshly re-indexed corpus and reproduced within noise (evals/results/20260706T174408Z.json) -- they predate the seed-scoring and code-body-context work above. faithfulness and answer_relevance are the 2026-07-06 run with code bodies in the generation context (evals/results/20260706T215528Z.json; GLM-5.2 generator, GLM-5.1 judge).
 
 | Category | n | hit_rate@5 | recall@5 | mrr | faithfulness | answer_relevance |
 |---|---:|---:|---:|---:|---:|---:|
-| definition_lookup | 12 | 0.50 | 0.50 | 0.47 | 4.67 | 4.33 |
-| feature_lookup | 12 | 0.75 | 0.75 | 0.63 | 5.00 | 2.17 |
-| dependency_trace | 10 | 0.40 | 0.35 | 0.29 | 5.00 | 3.90 |
-| impact_analysis | 8 | 1.00 | 0.54 | 0.78 | 5.00 | 4.25 |
-| cross_file_flow | 8 | 0.63 | 0.42 | 0.50 | 4.00 | 4.00 |
+| definition_lookup | 12 | 0.50 | 0.50 | 0.47 | 4.83 | 4.67 |
+| feature_lookup | 12 | 0.75 | 0.75 | 0.63 | 5.00 | 3.83 |
+| dependency_trace | 10 | 0.40 | 0.35 | 0.29 | 4.60 | 4.20 |
+| impact_analysis | 8 | 1.00 | 0.54 | 0.78 | 4.50 | 4.00 |
+| cross_file_flow | 8 | 0.63 | 0.42 | 0.50 | 4.50 | 4.25 |
 
-The breakdown is the point of the harness: `impact_analysis` retrieves cleanly (hit_rate@5 1.00) and answers well, while `dependency_trace` remains the weakest retrieval category (recall@5 0.35, mrr 0.29). On the generation side `feature_lookup` scores lowest on answer_relevance (2.17) despite the strong retrieval -- and the transcripts show exactly why: the combined context passed to the generator contains only symbol names, file paths, and graph relations (no code bodies), so for "how does X work" questions GLM-5.2 correctly answers that the context is insufficient, and the judge scores that refusal low on relevance (while faithfulness stays 5.00 -- the model refuses rather than hallucinates). The retrieval layer already returns each hit's code content; the context builder just drops it. Including retrieved code in the generation context is the corresponding lever, alongside the retrieval-side seed-selection work below. Graph-neighbor metrics rose sharply after the traversal rework (graph_neighbor_recall 0.10 -> 0.29, graph_traversal_correctness 0.08 -> 0.24), and the harness then localized the remaining ceiling precisely: for "how does X work" questions the embedding model often ranks schema/exception classes (e.g. `UserRegister`, `TokenVersionManager`) above the endpoint or service function whose call/import neighbors actually answer the question, so the graph traversal seeds from the wrong nodes. That seed-selection problem -- not the graph itself -- is the dominant remaining lever, and is the explicit target of the Phase 2 hybrid-search / reranking work.
+The breakdown is the point of the harness: `impact_analysis` retrieves cleanly (hit_rate@5 1.00) and answers well, while `dependency_trace` remains the weakest retrieval category (recall@5 0.35, mrr 0.29). On the generation side, `feature_lookup` used to score lowest on answer_relevance (2.17, 2026-06-20 run) despite strong retrieval, and the transcripts showed exactly why: the combined context passed to the generator contained only symbol names, file paths, and graph relations -- no code bodies -- so for "how does X work" questions GLM-5.2 correctly answered that the context was insufficient, and the judge scored that refusal low on relevance (while faithfulness stayed 5.00 -- the model refused rather than hallucinated). Feeding the code bodies the retrieval layer already returns (commit `54b6ba8`) flipped every category above 3.8 relevance -- feature_lookup moved 2.17 -> 3.83, and no category is now below 3.83 -- while keeping overall faithfulness above the 4.5 guard (4.72, evals/results/20260706T215528Z.json).
+
+Graph-neighbor metrics rose sharply after the traversal rework (graph_neighbor_recall 0.10 -> 0.29, graph_traversal_correctness 0.08 -> 0.24, 2026-06-20), and the harness then localized the remaining ceiling precisely: for "how does X work" questions the embedding model often ranked schema/exception classes (e.g. `UserRegister`, `TokenVersionManager`) above the endpoint or service function whose call/import neighbors actually answer the question, so the graph traversal seeded from the wrong nodes. Type-aware seed scoring (commit `cb60747`, 2026-07-07) addressed that by preferring function/method nodes over schema/exception classes when picking traversal seeds: graph_neighbor_recall rose to 0.36 and graph_traversal_correctness to 0.28, measured in isolation on the pre-code-body-context corpus (evals/results/20260706T212812Z.json). See Known limitations below for what that did not fix.
 
 **Known limitations.**
-- *Seeding dominates the graph-neighbor ceiling.* Traversal is seeded from the top semantic hits, so when semantic search surfaces the wrong node type (a schema class instead of the calling function), the right neighbors are never reached even though they exist in the graph. Verified by hand: seeding `register` directly yields its `get_password_hash` / `create_token_pair` neighbors at recall ~1.0.
+- *Seeding dominated the graph-neighbor ceiling (partially addressed).* Traversal is seeded from the top semantic hits, so when semantic search surfaced the wrong node type (a schema class instead of the calling function), the right neighbors were never reached even though they existed in the graph. Type-aware seed scoring (commit `cb60747`, 2026-07-07) raised graph_neighbor_recall 0.2867 -> 0.36 and graph_traversal_correctness 0.24 -> 0.28 in isolation, and moved hybrid_hit_rate@5 above plain hit_rate@5 for the first time (0.64 -> 0.68; evals/results/20260706T174408Z.json -> evals/results/20260706T212812Z.json). It did not close the ceiling: recall is still well under 1.0, plain hit_rate@5 itself barely moved (0.64 -> 0.66), and reranking on the semantic branch remains open as the next lever.
 - *Class instantiation and same-file usage are not edges.* Neighbors reachable only through instantiation (`Neo4jClient()`, `ChromaDBClient()`) or a class defined and used in the same file (`MetricsCollector`) are not yet modeled, so those expectations stay at zero by design. Modeling instantiation/usage is the next graph iteration.
 - *Eval isolation.* Graph nodes are indexed under `project_id=99999`; unlike ChromaDB collections, cross-project node isolation in Neo4j is not enforced.
 
