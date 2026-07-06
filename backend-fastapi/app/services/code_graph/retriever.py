@@ -27,6 +27,10 @@ SEED_TYPE_WEIGHTS = {"function": 1.0, "class": 0.7}
 SEED_SCHEMA_PATH_PENALTY = 0.3   # Pydantic request/response models
 SEED_EXCEPTION_PENALTY = 0.4     # *Error / *Exception names, exceptions modules
 
+CONTEXT_SNIPPET_COUNT = 5        # code snippets included in combined_context
+CONTEXT_SNIPPET_MAX_CHARS = 1500
+CONTEXT_TOTAL_MAX_CHARS = 8000   # hard cap on the snippet section
+
 
 def _score_seed(metadata: Dict[str, Any], relevance_score: float) -> float:
     """Seed priority = semantic relevance discounted by how unlikely the
@@ -167,42 +171,61 @@ class CodeGraphRetriever:
         return seeds
 
     def _build_combined_context(self, result: Dict[str, Any]) -> str:
-        """构建组合上下文字符串"""
-        context_parts = []
+        """Build the generation context: top-hit code snippets, then graph
+        relations. Eval evidence (spec 2026-07-07): names alone made the
+        generator refuse "how does X work" questions; the document field the
+        retrieval layer already returns is what answers them."""
+        parts = []
 
-        # 添加语义搜索结果
-        semantic = result.get("semantic_results", {})
-        if semantic:
-            if semantic.get("functions"):
-                context_parts.append("相关函数:")
-                for func in semantic["functions"][:5]:
-                    metadata = func.get("metadata", {})
-                    context_parts.append(
-                        f"  - {metadata.get('name', 'unknown')} "
-                        f"({metadata.get('module_path', '')})"
-                    )
+        semantic = result.get("semantic_results") or {}
+        chunks = []
+        if isinstance(semantic, dict):
+            for lst in semantic.values():
+                if isinstance(lst, list):
+                    chunks.extend(c for c in lst if isinstance(c, dict))
+        chunks.sort(key=lambda c: c.get("relevance_score", 0), reverse=True)
 
-            if semantic.get("classes"):
-                context_parts.append("相关类:")
-                for cls in semantic["classes"][:5]:
-                    metadata = cls.get("metadata", {})
-                    context_parts.append(
-                        f"  - {metadata.get('name', 'unknown')} "
-                        f"({metadata.get('module_path', '')})"
-                    )
+        seen = set()
+        total = 0
+        for chunk in chunks:
+            if len(seen) >= CONTEXT_SNIPPET_COUNT:
+                break
+            md = chunk.get("metadata") or {}
+            name = md.get("name")
+            key = (name, md.get("module_path"))
+            if not name or key in seen:
+                continue
+            header = f"### {name} ({md.get('module_path') or ''})"
+            doc = (chunk.get("document") or "").strip()
+            if doc:
+                budget = min(CONTEXT_SNIPPET_MAX_CHARS,
+                             CONTEXT_TOTAL_MAX_CHARS - total)
+                if budget <= 0:
+                    break
+                snippet = doc[:budget]
+                if len(doc) > budget:
+                    snippet += "\n... [truncated]"
+                block = f"{header}\n```\n{snippet}\n```"
+            else:
+                block = header
+            parts.append(block)
+            seen.add(key)
+            total += len(block)
+            if total >= CONTEXT_TOTAL_MAX_CHARS:
+                break
 
-        # 添加图上下文
         graph_ctx = result.get("graph_context")
         if graph_ctx:
-            context_parts.append("图谱关系:")
+            lines = ["图谱关系:"]
             for ctx in graph_ctx[:10]:
                 relation = ctx.get("relation", "related")
                 module_path = ctx.get("module_path") or ""
-                context_parts.append(
+                lines.append(
                     f"  - {ctx.get('name')} [{relation}] ({module_path})"
                 )
+            parts.append("\n".join(lines))
 
-        return "\n".join(context_parts) if context_parts else ""
+        return "\n\n".join(parts) if parts else ""
 
     async def get_dependencies(
         self,

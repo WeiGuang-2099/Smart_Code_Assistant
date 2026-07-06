@@ -76,3 +76,66 @@ class TestSeedSelection:
         seeds = retriever._seed_entities_from_semantic(semantic, 5)
         assert set(seeds[0].keys()) == {"name", "module_path", "class_name",
                                         "type", "relevance_score"}
+
+
+class TestCombinedContextWithCode:
+    def _result(self, functions=None, classes=None, graph=None):
+        return {"semantic_results": {"functions": functions or [],
+                                     "classes": classes or []},
+                "graph_context": graph}
+
+    def test_includes_code_body_and_header(self):
+        from app.services.code_graph.retriever import CodeGraphRetriever
+        r = CodeGraphRetriever()
+        ctx = r._build_combined_context(self._result(
+            functions=[_hit("register", "app/api/auth.py", "function", 0.9,
+                            document="async def register(data):\n    return await create_user(data)")]))
+        assert "### register (app/api/auth.py)" in ctx
+        assert "async def register(data):" in ctx
+
+    def test_snippet_truncated_with_marker(self):
+        from app.services.code_graph.retriever import (
+            CodeGraphRetriever, CONTEXT_SNIPPET_MAX_CHARS)
+        r = CodeGraphRetriever()
+        long_doc = "x" * (CONTEXT_SNIPPET_MAX_CHARS + 500)
+        ctx = r._build_combined_context(self._result(
+            functions=[_hit("f", "app/m.py", "function", 0.9, document=long_doc)]))
+        assert "[truncated]" in ctx
+        assert "x" * (CONTEXT_SNIPPET_MAX_CHARS + 1) not in ctx
+
+    def test_total_budget_enforced(self):
+        from app.services.code_graph.retriever import (
+            CodeGraphRetriever, CONTEXT_TOTAL_MAX_CHARS)
+        r = CodeGraphRetriever()
+        hits = [_hit(f"f{i}", "app/m.py", "function", 0.9 - i * 0.01,
+                     document="y" * 3000) for i in range(8)]
+        ctx = r._build_combined_context(self._result(functions=hits))
+        assert len(ctx) <= CONTEXT_TOTAL_MAX_CHARS + 200  # graph/header slack
+
+    def test_top_five_by_relevance_deduped(self):
+        from app.services.code_graph.retriever import CodeGraphRetriever
+        r = CodeGraphRetriever()
+        dup = _hit("f0", "app/m.py", "function", 0.95, document="body0")
+        hits = [dup, dup] + [_hit(f"f{i}", "app/m.py", "function", 0.9 - i * 0.1,
+                                  document=f"body{i}") for i in range(1, 7)]
+        ctx = r._build_combined_context(self._result(functions=hits))
+        assert ctx.count("### f0 ") == 1
+        assert "### f5 " not in ctx  # only 5 snippets total
+
+    def test_graph_section_preserved_after_snippets(self):
+        from app.services.code_graph.retriever import CodeGraphRetriever
+        r = CodeGraphRetriever()
+        ctx = r._build_combined_context(self._result(
+            functions=[_hit("f", "app/m.py", "function", 0.9, document="body")],
+            graph=[{"name": "Helper", "module_path": "app/h.py",
+                    "relation": "import", "source": "f"}]))
+        assert "Helper" in ctx and "[import]" in ctx
+        assert ctx.index("body") < ctx.index("Helper")
+
+    def test_missing_document_falls_back_to_header_only(self):
+        from app.services.code_graph.retriever import CodeGraphRetriever
+        r = CodeGraphRetriever()
+        ctx = r._build_combined_context(self._result(
+            functions=[_hit("f", "app/m.py", "function", 0.9)]))
+        assert "### f (app/m.py)" in ctx
+        assert "```" not in ctx
