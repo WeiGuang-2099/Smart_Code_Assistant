@@ -27,7 +27,7 @@ SEED_TYPE_WEIGHTS = {"function": 1.0, "class": 0.7}
 SEED_SCHEMA_PATH_PENALTY = 0.3   # Pydantic request/response models
 SEED_EXCEPTION_PENALTY = 0.4     # *Error / *Exception names, exceptions modules
 
-CONTEXT_SNIPPET_COUNT = 5        # code snippets included in combined_context
+CONTEXT_SNIPPET_COUNT = 5        # indexed document snippets included in combined_context
 CONTEXT_SNIPPET_MAX_CHARS = 1500
 CONTEXT_TOTAL_MAX_CHARS = 8000   # hard cap on the snippet section
 
@@ -171,10 +171,11 @@ class CodeGraphRetriever:
         return seeds
 
     def _build_combined_context(self, result: Dict[str, Any]) -> str:
-        """Build the generation context: top-hit code snippets, then graph
-        relations. Eval evidence (spec 2026-07-07): names alone made the
-        generator refuse "how does X work" questions; the document field the
-        retrieval layer already returns is what answers them."""
+        """Build the generation context: top-hit indexed document text
+        (signature + docstring), then graph relations. Eval evidence (spec
+        2026-07-07): names alone made the generator refuse "how does X work"
+        questions; the document field the retrieval layer already returns is
+        what answers them."""
         parts = []
 
         semantic = result.get("semantic_results") or {}

@@ -23,8 +23,9 @@ re-verified 2026-07-06, `evals/results/20260706T174408Z.json`):
 
 2. **The generation context contains no code.**
    `_build_combined_context` emits only symbol names, file paths, and graph
-   relations. ChromaDB hits already carry the chunk text in `document`, but
-   the builder drops it. GLM-5.2 correctly answers "context is insufficient"
+   relations. ChromaDB hits already carry indexed document text (name +
+   signature + docstring) in `document`, but the builder drops it. GLM-5.2
+   correctly answers "context is insufficient"
    (faithfulness stays 5.0), and the judge scores the refusal low on
    relevance. Baseline: answer_relevance 3.66 overall, feature_lookup 2.17.
 
@@ -78,8 +79,13 @@ def _score_seed(metadata: dict, relevance_score: float) -> float:
   current snippet is truncated to the remaining budget and iteration stops.
 - The existing graph-relations section is preserved after the code blocks.
 - The name-only lists are removed (names now appear in snippet headers).
-- Affects the production agent/chat path as well as evals -- intended; the
-  same gap exists in the product. Prompt growth is bounded by the total cap.
+- The only production consumer of `combined_context` is the raw string field
+  returned by `POST /api/code-graph/search`
+  (backend-fastapi/app/api/code_graph.py:~225). The agent tool
+  `search_code_semantic` (backend-fastapi/app/services/code_graph/tools.py)
+  formats its own name-only list from `semantic_results` and ignores
+  `combined_context`, so wiring the snippet context into the agent path is a
+  follow-up. Prompt growth is bounded by the total cap.
 - Truncation is plain character slicing with a `\n... [truncated]` marker;
   token-aware budgeting is out of scope (YAGNI until evals show a need).
 
@@ -116,8 +122,10 @@ corpus is this repo's own source), venv312, live Neo4j + ChromaDB via
 - Heuristic overfit to the golden set: weights are two round numbers and one
   path rule, derived from a failure mode (schema-over-function), not tuned
   per-case. Acceptable; documented in README limitations if the delta lands.
-- Bigger production prompts (B): bounded by 8000-char cap, roughly ~2k
-  tokens -- well within GLM-5.2 context.
+- Bigger production prompts (B): bounded by 8000-char cap -- roughly ~2k
+  tokens for English/code text, but up to ~8k tokens for CJK-heavy
+  documents (CJK characters tokenize close to 1:1); still well within
+  GLM-5.2 context.
 - faithfulness could dip if snippets are truncated mid-logic and the model
   extrapolates: the guard metric catches this; if it drops below ~4.5 the
   truncation length gets revisited before merging.
