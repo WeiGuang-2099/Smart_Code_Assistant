@@ -42,6 +42,17 @@ class TestScoreSeed:
         from app.services.code_graph.retriever import _score_seed
         assert _score_seed({}, 0.5) > 0
 
+    def test_schema_and_exception_penalties_compose(self):
+        from app.services.code_graph.retriever import (
+            _score_seed, SEED_TYPE_WEIGHTS, SEED_SCHEMA_PATH_PENALTY,
+            SEED_EXCEPTION_PENALTY)
+        got = _score_seed({"name": "ValidationError",
+                           "module_path": "app/schemas/errors.py",
+                           "type": "class"}, 1.0)
+        expected = (SEED_TYPE_WEIGHTS["class"] * SEED_SCHEMA_PATH_PENALTY
+                    * SEED_EXCEPTION_PENALTY)
+        assert got == expected
+
 
 class TestSeedSelection:
     def test_register_beats_userregister_in_seeds(self):
