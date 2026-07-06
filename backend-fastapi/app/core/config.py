@@ -104,7 +104,12 @@ class Settings(BaseSettings):
 
     # Code Graph Configuration
     CODE_GRAPH_MAX_DEPTH: int = 5                    # 图遍历最大深度
-    CODE_GRAPH_EMBEDDING_MODEL: str = "BAAI/bge-small-zh-v1.5"  # 嵌入模型
+    CODE_GRAPH_EMBEDDING_MODEL: str = "BAAI/bge-small-zh-v1.5"  # 本地 SentenceTransformer 嵌入模型
+    # Embedding provider: "sentence_transformers" (default, local) or "openai".
+    # OpenAI embeddings reuse LLM_API_KEY / LLM_BASE_URL. Switching providers
+    # changes vector dimensions, so existing project collections must be re-indexed.
+    CODE_GRAPH_EMBEDDING_PROVIDER: str = "sentence_transformers"
+    CODE_GRAPH_OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     CODE_GRAPH_MAX_ENTITIES: int = 100               # 单次最大实体数
     CODE_GRAPH_ENABLE_SEMANTIC_SEARCH: bool = True   # 启用语义搜索
 

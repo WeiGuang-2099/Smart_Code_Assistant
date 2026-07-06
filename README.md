@@ -297,12 +297,16 @@ Key configuration options (set in `backend-fastapi/.env`):
 | `NEO4J_URI` | Neo4j Bolt URI | `bolt://localhost:7687` |
 | `CHROMA_HOST` | ChromaDB host | `localhost` |
 | `SECRET_KEY` | JWT signing key | - |
-| `CODE_GRAPH_EMBEDDING_MODEL` | Embedding model | `BAAI/bge-small-zh-v1.5` |
+| `CODE_GRAPH_EMBEDDING_MODEL` | Local SentenceTransformer embedding model | `BAAI/bge-small-zh-v1.5` |
+| `CODE_GRAPH_EMBEDDING_PROVIDER` | Embedding provider: `sentence_transformers` (local) or `openai` | `sentence_transformers` |
+| `CODE_GRAPH_OPENAI_EMBEDDING_MODEL` | OpenAI embedding model (when provider is `openai`; reuses `LLM_API_KEY` / `LLM_BASE_URL`) | `text-embedding-3-small` |
 | `RATE_LIMIT_GENERAL` | General rate limit | `100/minute` |
 | `RATE_LIMIT_LOGIN` | Login rate limit | `20/minute` |
 | `SENTRY_DSN` | Sentry DSN - error tracking disabled if blank | _(unset)_ |
 | `SENTRY_TRACES_SAMPLE_RATE` | Sentry performance sampling | `0.0` |
 | `VITE_SENTRY_DSN` | Frontend Sentry DSN - tracking disabled if blank | _(unset)_ |
+
+> **Switching to OpenAI:** set `LLM_PROVIDER=openai` and `LLM_API_KEY=sk-...` in `backend-fastapi/.env` for chat/agents (models resolve from presets). For OpenAI embeddings, also set `CODE_GRAPH_EMBEDDING_PROVIDER=openai`. Because OpenAI and the local model produce different vector dimensions, **existing project collections must be re-indexed after changing the embedding provider** (delete and rebuild them); the two cannot be mixed in one collection.
 
 ## Project Structure
 
