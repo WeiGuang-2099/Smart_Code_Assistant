@@ -113,3 +113,4 @@ temp/
 # Evals runtime output
 evals/results/*.json
 evals/golden_set/*.draft.jsonl
+backend-fastapi/venv312/
