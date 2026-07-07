@@ -5,14 +5,27 @@ Run:  python -m app.mcp.server
 stdout is reserved for the MCP protocol; all logging goes to stderr.
 """
 import logging
+import os
 import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+from app.services.code_graph.config import code_graph_config
+
+# Force local-only model loading BEFORE any HuggingFace/transformers import, so a
+# slow or unreachable HuggingFace Hub cannot stall startup for minutes. Opt-in via
+# CODE_GRAPH_EMBEDDING_OFFLINE (requires the model to be cached locally).
+if code_graph_config.embedding_offline:
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+    os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+
 from mcp.server.fastmcp import FastMCP
 
 from app.mcp import tools
-from app.services.code_graph.chromadb_client import close_chromadb_client
+from app.services.code_graph.chromadb_client import (
+    close_chromadb_client,
+    get_chromadb_client,
+)
 from app.services.code_graph.neo4j_client import close_neo4j_client, get_neo4j_client
 
 logger = logging.getLogger(__name__)
@@ -20,7 +33,10 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(server: FastMCP) -> AsyncIterator[None]:
-    """Warm the Neo4j driver on startup; close all clients on shutdown."""
+    """Warm the Neo4j driver on startup; close all clients on shutdown.
+
+    The embedding model is warmed synchronously in main() (on the main thread)
+    before serving, so it is not touched here."""
     try:
         await get_neo4j_client()
     except Exception as exc:  # noqa: BLE001 - warmup is best-effort; tools retry lazily
@@ -40,10 +56,30 @@ mcp.add_tool(tools.find_callees)
 mcp.add_tool(tools.impact_analysis)
 mcp.add_tool(tools.find_call_path)
 mcp.add_tool(tools.explain_symbol)
+mcp.add_tool(tools.list_projects)
+
+
+def _warm_embedding_model() -> None:
+    """Load the ChromaDB client + embedding model synchronously on the main thread
+    before the server starts serving.
+
+    Loading the sentence-transformers (torch) model from a worker thread while the
+    main thread is also busy can deadlock, and a lazy first-call load costs ~15s+.
+    Warming it here, on the main thread, up front avoids both: every tool call then
+    reuses the ready singleton. Best-effort -- tools still retry lazily on failure."""
+    try:
+        get_chromadb_client()
+        logger.info("ChromaDB and embedding model warmed")
+    except Exception as exc:  # noqa: BLE001 - warmup is best-effort; tools retry lazily
+        logger.warning("ChromaDB warmup failed (tools will retry lazily): %s", exc)
 
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, stream=sys.stderr)
+    # Silence the SentenceTransformers batch progress bar (tqdm on stderr): it is
+    # noise for a stdio server and its teardown can emit spurious AttributeErrors.
+    logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
+    _warm_embedding_model()
     mcp.run(transport="stdio")
 
 

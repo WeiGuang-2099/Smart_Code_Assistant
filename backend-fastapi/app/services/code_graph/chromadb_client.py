@@ -4,6 +4,7 @@ ChromaDB Client - 向量数据库客户端
 提供代码实体的向量存储和语义搜索功能
 """
 import logging
+import threading
 from typing import Optional, List, Dict, Any
 from functools import lru_cache
 
@@ -135,6 +136,55 @@ class ChromaDBClient:
 
         return self._collections[collection_name]
 
+    def _get_search_collection(self, collection_name: str) -> Optional[Any]:
+        """Return an existing collection for querying, or None if it was never
+        indexed.
+
+        Unlike `_get_collection`, this never creates the collection, so querying
+        an unindexed project reports 'no data' instead of silently creating an
+        empty stub and returning zero hits (which masks a missing index)."""
+        if self._client is None:
+            self.connect()
+
+        if collection_name in self._collections:
+            return self._collections[collection_name]
+
+        try:
+            collection = self._client.get_collection(
+                name=collection_name,
+                embedding_function=self._embedding_function,
+            )
+        except Exception:
+            logger.debug(f"Collection not indexed: {collection_name}")
+            return None
+
+        self._collections[collection_name] = collection
+        return collection
+
+    def list_projects(self) -> List[Dict[str, Any]]:
+        """List indexed projects with per-type document counts.
+
+        Parses ChromaDB collection names (`project_{id}_functions` /
+        `project_{id}_classes`) so MCP clients can discover which project ids
+        actually hold vectors. Returned entries are sorted by project id."""
+        if self._client is None:
+            self.connect()
+
+        projects: Dict[int, Dict[str, int]] = {}
+        for collection in self._client.list_collections():
+            parts = collection.name.split("_")
+            if len(parts) < 3 or parts[0] != "project":
+                continue
+            try:
+                project_id = int(parts[1])
+            except ValueError:
+                continue
+            entity_type = "_".join(parts[2:])
+            entry = projects.setdefault(project_id, {"functions": 0, "classes": 0})
+            entry[entity_type] = collection.count()
+
+        return [{"project_id": pid, **counts} for pid, counts in sorted(projects.items())]
+
     # ==================== 代码实体索引 ====================
 
     def index_functions(
@@ -257,7 +307,9 @@ class ChromaDBClient:
         Returns:
             匹配的函数列表
         """
-        collection = self._get_collection(f"project_{project_id}_functions")
+        collection = self._get_search_collection(f"project_{project_id}_functions")
+        if collection is None:
+            return []
 
         results = collection.query(
             query_texts=[query],
@@ -289,7 +341,9 @@ class ChromaDBClient:
         top_k: int = 10
     ) -> List[Dict[str, Any]]:
         """语义搜索类"""
-        collection = self._get_collection(f"project_{project_id}_classes")
+        collection = self._get_search_collection(f"project_{project_id}_classes")
+        if collection is None:
+            return []
 
         results = collection.query(
             query_texts=[query],
@@ -362,14 +416,23 @@ class ChromaDBClient:
 
 # 全局客户端实例
 _chromadb_client: Optional[ChromaDBClient] = None
+_chromadb_lock = threading.Lock()
 
 
 def get_chromadb_client() -> ChromaDBClient:
-    """获取 ChromaDB 客户端单例"""
+    """获取 ChromaDB 客户端单例 (thread-safe).
+
+    connect() loads the embedding model (~15s cold). Guard singleton creation with
+    a lock and publish the instance only after connect() succeeds, so a concurrent
+    caller can never grab a half-built client (whose _client is still None) or race
+    a second connect()/model-load."""
     global _chromadb_client
     if _chromadb_client is None:
-        _chromadb_client = ChromaDBClient()
-        _chromadb_client.connect()
+        with _chromadb_lock:
+            if _chromadb_client is None:
+                client = ChromaDBClient()
+                client.connect()
+                _chromadb_client = client
     return _chromadb_client
 
 

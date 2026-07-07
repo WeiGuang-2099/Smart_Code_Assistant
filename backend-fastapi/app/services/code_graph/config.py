@@ -28,6 +28,14 @@ class CodeGraphConfig:
     enable_semantic_search: bool = field(
         default_factory=lambda: settings.CODE_GRAPH_ENABLE_SEMANTIC_SEARCH
     )
+    # Default project id for MCP tools / semantic search (see list_projects).
+    default_project_id: int = field(
+        default_factory=lambda: settings.CODE_GRAPH_DEFAULT_PROJECT_ID
+    )
+    # Load the embedding model from local cache only (no HuggingFace Hub network).
+    embedding_offline: bool = field(
+        default_factory=lambda: settings.CODE_GRAPH_EMBEDDING_OFFLINE
+    )
 
     # 嵌入提供方配置 (embedding provider)
     embedding_provider: str = field(

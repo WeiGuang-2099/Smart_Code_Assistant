@@ -53,7 +53,47 @@ async def test_search_codebase_empty_returns_no_matches():
     retriever.retrieve = AsyncMock(return_value={"combined_context": ""})
     with patch.object(tools, "get_retriever", return_value=retriever):
         out = await tools.search_codebase("nothing here")
-    assert out == 'No matches for "nothing here".'
+    assert 'No matches for "nothing here"' in out
+    # Empty result hints at project-id discovery (the common misconfiguration).
+    assert "list_projects" in out
+
+
+async def test_search_codebase_uses_configured_default_project_id():
+    retriever = MagicMock()
+    retriever.retrieve = AsyncMock(return_value={"combined_context": "ctx"})
+    with patch.object(tools, "get_retriever", return_value=retriever):
+        await tools.search_codebase("q")
+    # The default project_id passed through must be the configured default,
+    # not a hardcoded literal.
+    assert retriever.retrieve.await_args.kwargs["project_id"] == tools._DEFAULT_PROJECT_ID
+
+
+async def test_list_projects_formats_counts():
+    chromadb = MagicMock()
+    chromadb.list_projects = MagicMock(return_value=[
+        {"project_id": 1, "functions": 0, "classes": 0},
+        {"project_id": 99999, "functions": 333, "classes": 199},
+    ])
+    with patch.object(tools, "get_chromadb_client", return_value=chromadb):
+        out = await tools.list_projects()
+    assert "project_id=1: 0 functions, 0 classes" in out
+    assert "project_id=99999: 333 functions, 199 classes" in out
+
+
+async def test_list_projects_empty_returns_sentence():
+    chromadb = MagicMock()
+    chromadb.list_projects = MagicMock(return_value=[])
+    with patch.object(tools, "get_chromadb_client", return_value=chromadb):
+        out = await tools.list_projects()
+    assert out == "No indexed projects found."
+
+
+async def test_list_projects_error_returns_clean_line():
+    chromadb = MagicMock()
+    chromadb.list_projects = MagicMock(side_effect=RuntimeError("chroma down"))
+    with patch.object(tools, "get_chromadb_client", return_value=chromadb):
+        out = await tools.list_projects()
+    assert out.startswith("Error:")
 
 
 async def test_search_codebase_error_returns_clean_line():

@@ -301,6 +301,7 @@ ChromaDB services as the backend.
 | `impact_analysis` | Blast radius of changing a symbol |
 | `find_call_path` | Call paths between two functions |
 | `explain_symbol` | Signature, docstring, and graph neighbors of a symbol |
+| `list_projects` | Indexed project ids and their entity counts (discovery) |
 
 **Prerequisites:** the Docker infrastructure services running (see Getting
 Started) and the corpus indexed. The server runs in its own virtualenv
@@ -311,6 +312,15 @@ cd backend-fastapi
 python -m venv venv-mcp
 venv-mcp/Scripts/pip install -r requirements-mcp.txt
 ```
+
+**Project id:** the semantic tools query the project set by
+`CODE_GRAPH_DEFAULT_PROJECT_ID` (default `1`). Point it at the id you indexed the
+corpus under; if `search_codebase` returns "No matches", call `list_projects` to
+see which ids actually hold vectors. On first start the server warms the local
+embedding model (~15s, downloads from HuggingFace once); set
+`CODE_GRAPH_EMBEDDING_OFFLINE=true` afterwards to load it from cache only and skip
+all HuggingFace network calls (which can otherwise stall startup when the Hub is
+slow).
 
 **Claude Code**
 

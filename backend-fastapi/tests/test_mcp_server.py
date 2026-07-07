@@ -13,4 +13,5 @@ async def test_all_six_tools_registered():
         "impact_analysis",
         "find_call_path",
         "explain_symbol",
+        "list_projects",
     }

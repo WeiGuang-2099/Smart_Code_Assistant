@@ -4,14 +4,22 @@ Each function wraps the existing code-graph service layer and returns a clean,
 labelled plain-text string (no emojis) suitable for an LLM client. A future
 HTTP transport can bind the same functions unchanged.
 """
+import asyncio
 import logging
 
+from app.services.code_graph.chromadb_client import get_chromadb_client
+from app.services.code_graph.config import code_graph_config
 from app.services.code_graph.neo4j_client import get_neo4j_client
 from app.services.code_graph.retriever import get_retriever
 
 logger = logging.getLogger(__name__)
 
 DOCSTRING_MAX_CHARS = 500
+
+# Default project id, resolved from config at import (CODE_GRAPH_DEFAULT_PROJECT_ID).
+# The corpus must be indexed under this id; clients can call list_projects to
+# discover which ids actually hold vectors.
+_DEFAULT_PROJECT_ID = code_graph_config.default_project_id
 
 
 def _format_entity_list(
@@ -38,7 +46,7 @@ def _truncate_docstring(text: str, max_chars: int = DOCSTRING_MAX_CHARS) -> str:
     return text[:max_chars].rstrip() + " ... [truncated]"
 
 
-async def search_codebase(query: str, top_k: int = 5, project_id: int = 1) -> str:
+async def search_codebase(query: str, top_k: int = 5, project_id: int = _DEFAULT_PROJECT_ID) -> str:
     """Hybrid semantic + graph search over the indexed codebase.
 
     Args:
@@ -51,7 +59,11 @@ async def search_codebase(query: str, top_k: int = 5, project_id: int = 1) -> st
         result = await retriever.retrieve(query, project_id=project_id, top_k=top_k)
         context = (result.get("combined_context") or "").strip()
         if not context:
-            return f'No matches for "{query}".'
+            return (
+                f'No matches for "{query}" in project {project_id}. '
+                "If this project may not be indexed, call list_projects to see "
+                "which project ids hold vectors."
+            )
         return context
     except Exception as exc:  # noqa: BLE001 - surfaced to the client as one line
         logger.error("search_codebase failed: %s", exc)
@@ -59,7 +71,7 @@ async def search_codebase(query: str, top_k: int = 5, project_id: int = 1) -> st
 
 
 async def find_callers(
-    function_name: str, module_path: str | None = None, project_id: int = 1
+    function_name: str, module_path: str | None = None, project_id: int = _DEFAULT_PROJECT_ID
 ) -> str:
     """List functions that call the given function.
 
@@ -80,7 +92,7 @@ async def find_callers(
 
 
 async def find_callees(
-    function_name: str, module_path: str | None = None, project_id: int = 1
+    function_name: str, module_path: str | None = None, project_id: int = _DEFAULT_PROJECT_ID
 ) -> str:
     """List functions that the given function calls.
 
@@ -104,7 +116,7 @@ async def impact_analysis(
     entity_name: str,
     entity_type: str = "function",
     max_depth: int = 3,
-    project_id: int = 1,
+    project_id: int = _DEFAULT_PROJECT_ID,
 ) -> str:
     """Report the blast radius of changing a function or class.
 
@@ -131,7 +143,7 @@ async def impact_analysis(
 
 
 async def find_call_path(
-    source: str, target: str, max_depth: int = 5, project_id: int = 1
+    source: str, target: str, max_depth: int = 5, project_id: int = _DEFAULT_PROJECT_ID
 ) -> str:
     """Show call paths from a source function to a target function.
 
@@ -157,7 +169,7 @@ async def find_call_path(
 
 
 async def explain_symbol(
-    name: str, module_path: str | None = None, project_id: int = 1
+    name: str, module_path: str | None = None, project_id: int = _DEFAULT_PROJECT_ID
 ) -> str:
     """Summarize a symbol: its signature, docstring, and graph neighbors.
 
@@ -195,4 +207,29 @@ async def explain_symbol(
         return "\n".join(lines)
     except Exception as exc:  # noqa: BLE001
         logger.error("explain_symbol failed: %s", exc)
+        return f"Error: {exc}"
+
+
+async def list_projects() -> str:
+    """List indexed projects and their entity counts.
+
+    Use this to discover valid project_id values when search_codebase returns no
+    matches: the tools use a configured default project id, but the corpus may
+    have been indexed under a different id. Pass the right id to search_codebase.
+    """
+    try:
+        chromadb = get_chromadb_client()
+        projects = await asyncio.to_thread(chromadb.list_projects)
+        if not projects:
+            return "No indexed projects found."
+        lines = ["Indexed projects:"]
+        for project in projects:
+            lines.append(
+                f"- project_id={project['project_id']}: "
+                f"{project.get('functions', 0)} functions, "
+                f"{project.get('classes', 0)} classes"
+            )
+        return "\n".join(lines)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("list_projects failed: %s", exc)
         return f"Error: {exc}"
