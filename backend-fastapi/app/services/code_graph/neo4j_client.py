@@ -409,6 +409,56 @@ class Neo4jClient:
             """
         return await self.execute_query(query, {"search_term": search_term, "limit": limit})
 
+    async def get_entity(
+        self,
+        name: str,
+        module_path: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Fetch a single Function/Class node's core metadata by exact name.
+
+        Returns {name, module_path, class_name, type, signature, docstring}
+        for the first match (deterministic ORDER BY module_path), or None if
+        no Function/Class node has that exact name. ``type`` is "class" when
+        the node carries the Class label, else "function".
+        """
+        if module_path:
+            query = """
+            MATCH (e)
+            WHERE (e:Function OR e:Class)
+              AND e.name = $name AND e.module_path = $module_path
+            RETURN e.name AS name, e.module_path AS module_path,
+                   e.class_name AS class_name, labels(e) AS labels,
+                   e.signature AS signature, e.docstring AS docstring
+            ORDER BY e.module_path
+            LIMIT 1
+            """
+        else:
+            query = """
+            MATCH (e)
+            WHERE (e:Function OR e:Class) AND e.name = $name
+            RETURN e.name AS name, e.module_path AS module_path,
+                   e.class_name AS class_name, labels(e) AS labels,
+                   e.signature AS signature, e.docstring AS docstring
+            ORDER BY e.module_path
+            LIMIT 1
+            """
+        rows = await self.execute_query(
+            query, {"name": name, "module_path": module_path}
+        )
+        if not rows:
+            return None
+        row = rows[0]
+        labels = row.get("labels") or []
+        entity_type = "class" if "Class" in labels else "function"
+        return {
+            "name": row.get("name"),
+            "module_path": row.get("module_path"),
+            "class_name": row.get("class_name"),
+            "type": entity_type,
+            "signature": row.get("signature"),
+            "docstring": row.get("docstring"),
+        }
+
 
     async def batch_get_entity_context(
         self,
