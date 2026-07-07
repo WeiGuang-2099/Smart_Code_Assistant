@@ -8,6 +8,22 @@
 
 An AI-powered code generation, review, and analysis platform built with FastAPI, React, and LangChain. Combines LLM-driven code intelligence with a code knowledge graph (GraphRAG) for deep structural understanding of your codebase.
 
+## Screenshots
+
+A visual tour of the platform (dark, cyberpunk-themed UI):
+
+| Home dashboard | AI code generation |
+|:---:|:---:|
+| ![Home dashboard](docs/screenshots/02-dashboard.png) | ![AI code generation](docs/screenshots/03-generate.png) |
+| **Code editor (Monaco)** | **Code analysis + GraphRAG** |
+| ![Code editor](docs/screenshots/09-editor.png) | ![Code analysis](docs/screenshots/06-code-analysis.png) |
+| **Code review** | **AI agents ("digital humans")** |
+| ![Code review](docs/screenshots/04-review.png) | ![AI agents](docs/screenshots/05-agents.png) |
+| **Documents** | **Projects** |
+| ![Documents](docs/screenshots/07-documents.png) | ![Projects](docs/screenshots/08-projects.png) |
+| **Profile & settings** | **Login** |
+| ![Profile](docs/screenshots/10-profile.png) | ![Login](docs/screenshots/01-login.png) |
+
 ## Features
 
 ### AI Code Intelligence
