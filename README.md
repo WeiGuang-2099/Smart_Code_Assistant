@@ -10,19 +10,21 @@ An AI-powered code generation, review, and analysis platform built with FastAPI,
 
 ## Screenshots
 
-A visual tour of the platform (dark, cyberpunk-themed UI):
+Every image below is a **live end-to-end run** captured while driving the UI against the full running stack (FastAPI + MySQL + Neo4j + ChromaDB + ZhipuAI GLM) - not static mockups. The Generate, Review, Analysis, and GraphRAG panels show real model responses and a knowledge graph built on the spot.
 
-| Home dashboard | AI code generation |
+| AI code generation - real GLM output | Code review - live scoring + issue detection |
 |:---:|:---:|
-| ![Home dashboard](docs/screenshots/02-dashboard.png) | ![AI code generation](docs/screenshots/03-generate.png) |
-| **Code editor (Monaco)** | **Code analysis + GraphRAG** |
-| ![Code editor](docs/screenshots/09-editor.png) | ![Code analysis](docs/screenshots/06-code-analysis.png) |
-| **Code review** | **AI agents ("digital humans")** |
-| ![Code review](docs/screenshots/04-review.png) | ![AI agents](docs/screenshots/05-agents.png) |
-| **Documents** | **Projects** |
-| ![Documents](docs/screenshots/07-documents.png) | ![Projects](docs/screenshots/08-projects.png) |
-| **Profile & settings** | **Login** |
-| ![Profile](docs/screenshots/10-profile.png) | ![Login](docs/screenshots/01-login.png) |
+| ![AI code generation](docs/screenshots/03-generate.png) | ![Code review](docs/screenshots/04-review.png) |
+| **Code analysis + GraphRAG - graph built from the pasted code** | **Code knowledge graph - interactive canvas (100 nodes / 200 edges)** |
+| ![Code analysis](docs/screenshots/06-code-analysis.png) | ![Knowledge graph](docs/screenshots/11-code-graph.png) |
+| **AI agents ("digital humans")** | **Projects** |
+| ![AI agents](docs/screenshots/05-agents.png) | ![Projects](docs/screenshots/08-projects.png) |
+| **Documents** | **Profile - live account stats** |
+| ![Documents](docs/screenshots/07-documents.png) | ![Profile](docs/screenshots/10-profile.png) |
+| **Code editor (Monaco)** | **Home dashboard** |
+| ![Code editor](docs/screenshots/09-editor.png) | ![Home dashboard](docs/screenshots/02-dashboard.png) |
+| **Login** | |
+| ![Login](docs/screenshots/01-login.png) | |
 
 ## Features
 
