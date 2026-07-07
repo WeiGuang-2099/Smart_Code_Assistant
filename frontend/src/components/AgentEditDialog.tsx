@@ -10,22 +10,22 @@ interface AgentEditDialogProps {
   onComplete: () => void
 }
 
-// 可选领域列表
+// Available domains
 const DOMAIN_OPTIONS = [
-  { value: 'code', label: '代码开发', icon: '💻' },
-  { value: 'writing', label: '内容写作', icon: '✍️' },
-  { value: 'analysis', label: '数据分析', icon: '📊' },
-  { value: 'design', label: '设计创意', icon: '🎨' },
-  { value: 'translation', label: '翻译', icon: '🌐' },
-  { value: 'general', label: '通用助手', icon: '🤖' },
+  { value: 'code', label: 'Code Development', icon: '💻' },
+  { value: 'writing', label: 'Content Writing', icon: '✍️' },
+  { value: 'analysis', label: 'Data Analysis', icon: '📊' },
+  { value: 'design', label: 'Design & Creative', icon: '🎨' },
+  { value: 'translation', label: 'Translation', icon: '🌐' },
+  { value: 'general', label: 'General Assistant', icon: '🤖' },
 ]
 
-// 状态选项
+// Status options
 const STATUS_OPTIONS = [
-  { value: 'draft', label: '草稿', color: 'text-gray-400' },
-  { value: 'active', label: '活跃', color: 'text-green-400' },
-  { value: 'inactive', label: '停用', color: 'text-yellow-400' },
-  { value: 'training', label: '训练中', color: 'text-purple-400' },
+  { value: 'draft', label: 'Draft', color: 'text-gray-400' },
+  { value: 'active', label: 'Active', color: 'text-green-400' },
+  { value: 'inactive', label: 'Inactive', color: 'text-yellow-400' },
+  { value: 'training', label: 'Training', color: 'text-purple-400' },
 ]
 
 export default function AgentEditDialog({

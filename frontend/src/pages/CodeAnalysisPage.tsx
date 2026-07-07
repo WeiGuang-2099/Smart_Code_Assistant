@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { apiFetch } from '../lib/apiClient'
 import { useAuth } from '../contexts/AuthContext'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 type AnalysisType = 'structure' | 'smells' | 'complexity' | 'security' | 'all_basic'
 type GraphQueryType = 'search' | 'dependencies' | 'impact' | 'paths'
@@ -60,19 +60,19 @@ export default function CodeAnalysisPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // 基础分析结果
+  // Basic analysis results
   const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([])
 
-  // 完整分析结果
+  // Full analysis results
   const [fullAnalysis, setFullAnalysis] = useState<FullAnalysisResponse | null>(null)
 
-  // GraphRAG 查询
+  // GraphRAG Query
   const [graphQuery, setGraphQuery] = useState('')
   const [graphQueryType, setGraphQueryType] = useState<GraphQueryType>('search')
   const [graphResult, setGraphResult] = useState<string>('')
   const [graphLoading, setGraphLoading] = useState(false)
 
-  // 图谱可视化
+  // Graph visualization
   const [graphData, setGraphData] = useState<GraphData | null>(null)
   const [graphVizLoading, setGraphVizLoading] = useState(false)
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
@@ -82,7 +82,7 @@ export default function CodeAnalysisPage() {
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
 
-  // 分析选项
+  // Analysis options
   const [enableGraph, setEnableGraph] = useState(true)
   const [activeTab, setActiveTab] = useState<'editor' | 'results' | 'graph' | 'visualize'>('editor')
 
@@ -93,7 +93,7 @@ export default function CodeAnalysisPage() {
     setError('')
 
     try {
-      const response = await fetch(`${API_URL}/api/v1/code-analysis/analyze`, {
+      const response = await apiFetch(`/api/v1/code-analysis/analyze`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -126,7 +126,7 @@ export default function CodeAnalysisPage() {
     setFullAnalysis(null)
 
     try {
-      const response = await fetch(`${API_URL}/api/v1/code-analysis/full-analysis`, {
+      const response = await apiFetch(`/api/v1/code-analysis/full-analysis`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -147,7 +147,7 @@ export default function CodeAnalysisPage() {
       setFullAnalysis(data)
       setActiveTab('results')
 
-      // 如果构建了图谱，自动加载可视化
+      // If the graph was built, auto-load the visualization
       if (data.graph_built) {
         loadGraphVisualization()
       }
@@ -165,7 +165,7 @@ export default function CodeAnalysisPage() {
     setGraphResult('')
 
     try {
-      const response = await fetch(`${API_URL}/api/v1/code-analysis/graph/query`, {
+      const response = await apiFetch(`/api/v1/code-analysis/graph/query`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -183,7 +183,7 @@ export default function CodeAnalysisPage() {
       const data = await response.json()
       setGraphResult(data.result || JSON.stringify(data, null, 2))
     } catch (err) {
-      setGraphResult(`❌ 查询失败: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      setGraphResult(`❌ Query failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setGraphLoading(false)
     }
@@ -195,7 +195,7 @@ export default function CodeAnalysisPage() {
     setGraphVizLoading(true)
 
     try {
-      const response = await fetch(`${API_URL}/api/v1/code-graph/visualize?limit=100`, {
+      const response = await apiFetch(`/api/v1/code-graph/visualize?limit=100`, {
         headers: { Authorization: `Bearer ${token}` },
       })
 
@@ -204,7 +204,7 @@ export default function CodeAnalysisPage() {
       const data = await response.json()
 
       if (data.success && data.nodes.length > 0) {
-        // 为节点分配初始位置（圆形布局）
+        // Assign initial node positions (circular layout)
         const centerX = 400
         const centerY = 300
         const radius = Math.min(250, 50 * Math.sqrt(data.nodes.length))
@@ -232,7 +232,7 @@ export default function CodeAnalysisPage() {
     }
   }
 
-  // Canvas 绘制
+  // Canvas drawing
   const drawGraph = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas || !graphData) return
@@ -243,16 +243,16 @@ export default function CodeAnalysisPage() {
     const width = canvas.width
     const height = canvas.height
 
-    // 清空画布
+    // Clear canvas
     ctx.fillStyle = '#0a0a0f'
     ctx.fillRect(0, 0, width, height)
 
-    // 应用变换
+    // Apply transform
     ctx.save()
     ctx.translate(offset.x, offset.y)
     ctx.scale(scale, scale)
 
-    // 绘制边
+    // Draw edges
     graphData.edges.forEach((edge) => {
       const source = graphData.nodes.find((n) => n.id === edge.source)
       const target = graphData.nodes.find((n) => n.id === edge.target)
@@ -261,11 +261,11 @@ export default function CodeAnalysisPage() {
         ctx.beginPath()
         ctx.moveTo(source.x, source.y)
         ctx.lineTo(target.x, target.y)
-        ctx.strokeStyle = edge.color + '60' // 半透明
+        ctx.strokeStyle = edge.color + '60' // semi-transparent
         ctx.lineWidth = 1.5
         ctx.stroke()
 
-        // 绘制箭头
+        // Draw arrow
         const angle = Math.atan2(target.y - source.y, target.x - source.x)
         const arrowLen = 8
         const arrowX = target.x - 20 * Math.cos(angle)
@@ -287,14 +287,14 @@ export default function CodeAnalysisPage() {
       }
     })
 
-    // 绘制节点
+    // Draw nodes
     graphData.nodes.forEach((node) => {
       if (node.x === undefined || node.y === undefined) return
 
       const isSelected = selectedNode?.id === node.id
       const radius = isSelected ? 20 : 15
 
-      // 节点光晕
+      // Node glow
       if (isSelected) {
         const gradient = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, 30)
         gradient.addColorStop(0, node.color + '40')
@@ -305,7 +305,7 @@ export default function CodeAnalysisPage() {
         ctx.fill()
       }
 
-      // 节点圆形
+      // Node circle
       ctx.beginPath()
       ctx.arc(node.x, node.y, radius, 0, Math.PI * 2)
       ctx.fillStyle = isSelected ? node.color : node.color + 'cc'
@@ -314,13 +314,13 @@ export default function CodeAnalysisPage() {
       ctx.lineWidth = 1
       ctx.stroke()
 
-      // 节点标签
+      // Node label
       ctx.fillStyle = '#ffffff'
       ctx.font = '10px monospace'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
 
-      // 截断过长的标签
+      // Truncate long labels
       const label = node.label.length > 10 ? node.label.slice(0, 10) + '..' : node.label
       ctx.fillText(label, node.x, node.y + radius + 12)
     })
@@ -328,12 +328,12 @@ export default function CodeAnalysisPage() {
     ctx.restore()
   }, [graphData, offset, scale, selectedNode])
 
-  // 重绘
+  // Redraw
   useEffect(() => {
     drawGraph()
   }, [drawGraph])
 
-  // 鼠标交互
+  // Mouse interaction
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
     if (!canvas || !graphData) return
@@ -342,7 +342,7 @@ export default function CodeAnalysisPage() {
     const x = (e.clientX - rect.left - offset.x) / scale
     const y = (e.clientY - rect.top - offset.y) / scale
 
-    // 检查是否点击了节点
+    // Check if a node was clicked
     const clickedNode = graphData.nodes.find((node) => {
       if (node.x === undefined || node.y === undefined) return false
       const dist = Math.sqrt((x - node.x) ** 2 + (y - node.y) ** 2)
@@ -422,8 +422,8 @@ export default function CodeAnalysisPage() {
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
           <div className="text-6xl mb-4">🔐</div>
-          <h3 className="text-xl font-semibold text-gray-300 mb-2">需要登录</h3>
-          <p className="text-gray-500">请先登录以使用代码分析功能</p>
+          <h3 className="text-xl font-semibold text-gray-300 mb-2">Login Required</h3>
+          <p className="text-gray-500">Please log in to use code analysis</p>
         </div>
       </div>
     )
@@ -434,9 +434,9 @@ export default function CodeAnalysisPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold neon-text">代码分析</h1>
+          <h1 className="text-2xl font-bold neon-text">Code Analysis</h1>
           <p className="text-gray-400 text-sm mt-1">
-            基础分析 + GraphRAG 知识图谱
+            Basic Analysis + GraphRAG Knowledge Graph
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -456,7 +456,7 @@ export default function CodeAnalysisPage() {
               onChange={(e) => setEnableGraph(e.target.checked)}
               className="rounded border-gray-600 bg-gray-900"
             />
-            构建知识图谱
+            Build Knowledge Graph
           </label>
         </div>
       </div>
@@ -464,10 +464,10 @@ export default function CodeAnalysisPage() {
       {/* Tabs */}
       <div className="flex gap-2 border-b border-gray-700">
         {[
-          { id: 'editor', label: '代码编辑' },
-          { id: 'results', label: '分析结果' },
-          { id: 'visualize', label: '图谱可视化' },
-          { id: 'graph', label: '图谱查询' },
+          { id: 'editor', label: 'Editor' },
+          { id: 'results', label: 'Results' },
+          { id: 'visualize', label: 'Graph visualization' },
+          { id: 'graph', label: 'Graph Query' },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -502,13 +502,13 @@ export default function CodeAnalysisPage() {
             <textarea
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="粘贴或输入代码..."
+              placeholder="Paste or type code..."
               className="w-full h-96 px-4 py-3 bg-gray-900/50 border border-cyan-500/30 rounded-lg
                          text-gray-100 font-mono text-sm resize-none
                          focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
             />
             <div className="absolute bottom-3 right-3 text-xs text-gray-500">
-              {code.split('\n').length} 行
+              {code.split('\n').length} lines
             </div>
           </div>
 
@@ -519,7 +519,7 @@ export default function CodeAnalysisPage() {
               className="px-6 py-2 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/30
                          hover:bg-cyan-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              {loading ? '分析中...' : '基础分析'}
+              {loading ? 'Analyzing...' : 'Basic Analysis'}
             </button>
             <button
               onClick={runFullAnalysis}
@@ -527,7 +527,7 @@ export default function CodeAnalysisPage() {
               className="px-6 py-2 rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/30
                          hover:bg-purple-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              {loading ? '分析中...' : '完整分析 + GraphRAG'}
+              {loading ? 'Analyzing...' : 'Full Analysis + GraphRAG'}
             </button>
           </div>
         </div>
@@ -539,7 +539,7 @@ export default function CodeAnalysisPage() {
           {fullAnalysis && (
             <div className="cyber-card p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-100">综合评估</h3>
+                <h3 className="text-lg font-semibold text-gray-100">Overall Assessment</h3>
                 <div className={`text-3xl font-bold ${getScoreColor(fullAnalysis.overall_score)}`}>
                   {fullAnalysis.overall_score}
                 </div>
@@ -548,7 +548,7 @@ export default function CodeAnalysisPage() {
 
               {fullAnalysis.recommendations.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-medium text-gray-300 mb-2">改进建议:</h4>
+                  <h4 className="text-sm font-medium text-gray-300 mb-2">Recommendations:</h4>
                   <ul className="space-y-1">
                     {fullAnalysis.recommendations.map((rec, i) => (
                       <li key={i} className="text-sm text-gray-400 flex items-start gap-2">
@@ -563,7 +563,7 @@ export default function CodeAnalysisPage() {
               {fullAnalysis.graph_built && fullAnalysis.graph_stats && (
                 <div className="mt-4 pt-4 border-t border-gray-700">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-medium text-gray-300">知识图谱:</h4>
+                    <h4 className="text-sm font-medium text-gray-300">Knowledge Graph:</h4>
                     <button
                       onClick={() => {
                         setActiveTab('visualize')
@@ -571,15 +571,15 @@ export default function CodeAnalysisPage() {
                       }}
                       className="text-xs text-cyan-400 hover:text-cyan-300"
                     >
-                      查看图谱 →
+                      View Graph →
                     </button>
                   </div>
                   <div className="flex gap-4 text-sm mt-2">
                     <span className="text-gray-400">
-                      节点: <span className="text-cyan-400">{fullAnalysis.graph_stats.nodes}</span>
+                      Nodes: <span className="text-cyan-400">{fullAnalysis.graph_stats.nodes}</span>
                     </span>
                     <span className="text-gray-400">
-                      关系: <span className="text-purple-400">{fullAnalysis.graph_stats.relationships}</span>
+                      Relationships: <span className="text-purple-400">{fullAnalysis.graph_stats.relationships}</span>
                     </span>
                   </div>
                 </div>
@@ -589,7 +589,7 @@ export default function CodeAnalysisPage() {
 
           {fullAnalysis?.structure && (
             <div className="cyber-card p-6">
-              <h3 className="text-lg font-semibold text-gray-100 mb-3">📊 结构分析</h3>
+              <h3 className="text-lg font-semibold text-gray-100 mb-3">📊 Structure Analysis</h3>
               <div className="bg-gray-900/50 rounded-lg p-4">
                 {renderAnalysisResult(fullAnalysis.structure)}
               </div>
@@ -598,7 +598,7 @@ export default function CodeAnalysisPage() {
 
           {fullAnalysis?.security && (
             <div className="cyber-card p-6">
-              <h3 className="text-lg font-semibold text-gray-100 mb-3">🔒 安全检查</h3>
+              <h3 className="text-lg font-semibold text-gray-100 mb-3">🔒 Security Check</h3>
               <div className="bg-gray-900/50 rounded-lg p-4">
                 {renderAnalysisResult(fullAnalysis.security)}
               </div>
@@ -608,8 +608,8 @@ export default function CodeAnalysisPage() {
           {!analysisResults.length && !fullAnalysis && (
             <div className="text-center py-12 text-gray-500">
               <div className="text-4xl mb-4">📋</div>
-              <p>还没有分析结果</p>
-              <p className="text-sm mt-2">在"代码编辑"中输入代码并点击分析</p>
+              <p>No analysis results yet</p>
+              <p className="text-sm mt-2">Enter code in the Editor tab and click Analyze</p>
             </div>
           )}
         </div>
@@ -620,11 +620,11 @@ export default function CodeAnalysisPage() {
         <div className="space-y-4">
           <div className="cyber-card p-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-100">代码知识图谱</h3>
+              <h3 className="text-lg font-semibold text-gray-100">Code Knowledge Graph</h3>
               <div className="flex items-center gap-4">
                 {graphData && (
                   <span className="text-sm text-gray-400">
-                    {graphData.stats.node_count} 节点 · {graphData.stats.edge_count} 关系
+                    {graphData.stats.node_count} nodes · {graphData.stats.edge_count} relationships
                   </span>
                 )}
                 <button
@@ -633,7 +633,7 @@ export default function CodeAnalysisPage() {
                   className="px-3 py-1 text-xs rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30
                              hover:bg-cyan-500/30 disabled:opacity-50"
                 >
-                  {graphVizLoading ? '加载中...' : '刷新'}
+                  {graphVizLoading ? 'Loading...' : 'Refresh'}
                 </button>
               </div>
             </div>
@@ -660,8 +660,8 @@ export default function CodeAnalysisPage() {
                 <div className="flex items-center justify-center h-[500px] text-gray-500">
                   <div className="text-center">
                     <div className="text-4xl mb-4">🕸️</div>
-                    <p>暂无图谱数据</p>
-                    <p className="text-sm mt-2">请先分析代码构建知识图谱</p>
+                    <p>No graph data</p>
+                    <p className="text-sm mt-2">Analyze code first to build the knowledge graph</p>
                   </div>
                 </div>
               )}
@@ -677,9 +677,9 @@ export default function CodeAnalysisPage() {
                     <span className="font-medium text-gray-100">{selectedNode.label}</span>
                   </div>
                   <div className="text-xs text-gray-400 space-y-1">
-                    <div>类型: {selectedNode.type}</div>
-                    <div>模块: {selectedNode.module}</div>
-                    {selectedNode.class && <div>类: {selectedNode.class}</div>}
+                    <div>Type: {selectedNode.type}</div>
+                    <div>Module: {selectedNode.module}</div>
+                    {selectedNode.class && <div>Class: {selectedNode.class}</div>}
                   </div>
                 </div>
               )}
@@ -718,18 +718,18 @@ export default function CodeAnalysisPage() {
               <div className="flex items-center gap-6 mt-4 text-xs text-gray-400">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-cyan-400" />
-                  <span>函数</span>
+                  <span>Function</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-purple-500" />
-                  <span>类</span>
+                  <span>Class</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-green-500" />
-                  <span>模块</span>
+                  <span>Module</span>
                 </div>
                 <div className="text-gray-500 ml-4">
-                  拖拽移动 · 滚轮缩放 · 点击查看详情
+                  Drag to pan · Scroll to zoom · Click for details
                 </div>
               </div>
             )}
@@ -741,7 +741,7 @@ export default function CodeAnalysisPage() {
       {activeTab === 'graph' && (
         <div className="space-y-4">
           <div className="cyber-card p-6">
-            <h3 className="text-lg font-semibold text-gray-100 mb-4">图谱查询</h3>
+            <h3 className="text-lg font-semibold text-gray-100 mb-4">Graph Query</h3>
 
             <div className="flex gap-4 mb-4">
               <select
@@ -749,10 +749,10 @@ export default function CodeAnalysisPage() {
                 onChange={(e) => setGraphQueryType(e.target.value as GraphQueryType)}
                 className="px-3 py-2 bg-gray-900/50 border border-cyan-500/30 rounded-lg text-gray-300"
               >
-                <option value="search">语义搜索</option>
-                <option value="dependencies">依赖查询</option>
-                <option value="impact">影响分析</option>
-                <option value="paths">路径查找</option>
+                <option value="search">Semantic Search</option>
+                <option value="dependencies">Dependency Query</option>
+                <option value="impact">Impact Analysis</option>
+                <option value="paths">Path Finding</option>
               </select>
 
               <input
@@ -761,12 +761,12 @@ export default function CodeAnalysisPage() {
                 onChange={(e) => setGraphQuery(e.target.value)}
                 placeholder={
                   graphQueryType === 'search'
-                    ? '输入自然语言查询，如：处理用户认证的函数'
+                    ? 'Enter a natural-language query, e.g. functions that handle user authentication'
                     : graphQueryType === 'dependencies'
-                    ? '输入函数名或类名'
+                    ? 'Enter a function or class name'
                     : graphQueryType === 'impact'
-                    ? '输入要分析的实体名称'
-                    : '输入 source,target（用逗号分隔）'
+                    ? 'Enter the entity name to analyze'
+                    : 'Enter source,target (comma-separated)'
                 }
                 className="flex-1 px-4 py-2 bg-gray-900/50 border border-cyan-500/30 rounded-lg
                            text-gray-100 placeholder-gray-500"
@@ -778,7 +778,7 @@ export default function CodeAnalysisPage() {
                 className="px-6 py-2 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/30
                            hover:bg-cyan-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
-                {graphLoading ? '查询中...' : '查询'}
+                {graphLoading ? 'Querying...' : 'Query'}
               </button>
             </div>
 
@@ -792,30 +792,30 @@ export default function CodeAnalysisPage() {
           </div>
 
           <div className="cyber-card p-6">
-            <h3 className="text-lg font-semibold text-gray-100 mb-4">查询类型说明</h3>
+            <h3 className="text-lg font-semibold text-gray-100 mb-4">Query Type Guide</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-gray-900/30 rounded-lg">
-                <h4 className="text-cyan-400 font-medium mb-2">🔎 语义搜索</h4>
+                <h4 className="text-cyan-400 font-medium mb-2">🔎 Semantic Search</h4>
                 <p className="text-sm text-gray-400">
-                  使用自然语言搜索代码实体，如"处理用户登录的函数"
+                  Search code entities with natural language, e.g. "functions that handle user login"
                 </p>
               </div>
               <div className="p-4 bg-gray-900/30 rounded-lg">
-                <h4 className="text-purple-400 font-medium mb-2">🔗 依赖查询</h4>
+                <h4 className="text-purple-400 font-medium mb-2">🔗 Dependency Query</h4>
                 <p className="text-sm text-gray-400">
-                  查询函数/类的调用关系，找出谁调用了它以及它调用了谁
+                  Query the call relationships of a function/class - who calls it and what it calls
                 </p>
               </div>
               <div className="p-4 bg-gray-900/30 rounded-lg">
-                <h4 className="text-yellow-400 font-medium mb-2">🎯 影响分析</h4>
+                <h4 className="text-yellow-400 font-medium mb-2">🎯 Impact Analysis</h4>
                 <p className="text-sm text-gray-400">
-                  分析修改某个函数会影响哪些其他代码
+                  Analyze which other code is affected by changing a function
                 </p>
               </div>
               <div className="p-4 bg-gray-900/30 rounded-lg">
-                <h4 className="text-green-400 font-medium mb-2">🛤️ 路径查找</h4>
+                <h4 className="text-green-400 font-medium mb-2">🛤️ Path Finding</h4>
                 <p className="text-sm text-gray-400">
-                  查找两个函数之间的调用路径
+                  Find the call path between two functions
                 </p>
               </div>
             </div>

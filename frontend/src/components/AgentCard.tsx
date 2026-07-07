@@ -8,12 +8,12 @@ interface AgentCardProps {
   onDelete: (id: number) => void
 }
 
-// 状态颜色和标签映射
+// Status color and label mapping
 const statusConfig: Record<AgentStatus, { color: string; label: string; bgColor: string }> = {
-  draft: { color: 'text-gray-400', label: '草稿', bgColor: 'bg-gray-500/20' },
-  active: { color: 'text-green-400', label: '活跃', bgColor: 'bg-green-500/20' },
-  inactive: { color: 'text-yellow-400', label: '停用', bgColor: 'bg-yellow-500/20' },
-  training: { color: 'text-purple-400', label: '训练中', bgColor: 'bg-purple-500/20' },
+  draft: { color: 'text-gray-400', label: 'Draft', bgColor: 'bg-gray-500/20' },
+  active: { color: 'text-green-400', label: 'Active', bgColor: 'bg-green-500/20' },
+  inactive: { color: 'text-yellow-400', label: 'Inactive', bgColor: 'bg-yellow-500/20' },
+  training: { color: 'text-purple-400', label: 'Training', bgColor: 'bg-purple-500/20' },
 }
 
 function AgentCard({ agent, onChat, onEdit, onDelete }: AgentCardProps) {
@@ -21,7 +21,7 @@ function AgentCard({ agent, onChat, onEdit, onDelete }: AgentCardProps) {
 
   return (
     <div className="cyber-card p-6 hover:border-cyan-500/50 transition-all group relative">
-      {/* 背景渐变效果 */}
+      {/* Background gradient effect */}
       <div
         className="absolute inset-0 bg-gradient-to-br from-cyan-500/0 via-purple-500/0 to-pink-500/0
                     group-hover:from-cyan-500/5 group-hover:via-purple-500/5 group-hover:to-pink-500/5
@@ -29,10 +29,10 @@ function AgentCard({ agent, onChat, onEdit, onDelete }: AgentCardProps) {
       />
 
       <div className="relative">
-        {/* 头部：头像和状态 */}
+        {/* Header: avatar and status */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            {/* 头像 */}
+            {/* Avatar */}
             <div
               className="w-12 h-12 rounded-lg flex items-center justify-center text-2xl
                           bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/30"
@@ -48,7 +48,7 @@ function AgentCard({ agent, onChat, onEdit, onDelete }: AgentCardProps) {
               )}
             </div>
 
-            {/* 名称和领域 */}
+            {/* Name and domain */}
             <div>
               <h3 className="text-lg font-semibold text-gray-100 group-hover:text-cyan-300 transition-colors">
                 {agent.name}
@@ -59,7 +59,7 @@ function AgentCard({ agent, onChat, onEdit, onDelete }: AgentCardProps) {
             </div>
           </div>
 
-          {/* 状态指示器 */}
+          {/* Status indicator */}
           <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${status.bgColor}`}>
             <span
               className={`w-2 h-2 rounded-full ${status.color.replace('text-', 'bg-')} ${
@@ -70,23 +70,23 @@ function AgentCard({ agent, onChat, onEdit, onDelete }: AgentCardProps) {
           </div>
         </div>
 
-        {/* 描述 */}
+        {/* Description */}
         <p className="text-sm text-gray-400 mb-4 line-clamp-2 min-h-[40px]">
-          {agent.description || '暂无描述'}
+          {agent.description || 'No description'}
         </p>
 
-        {/* 统计信息 */}
+        {/* Statistics */}
         <div className="flex items-center gap-4 mb-4 text-xs text-gray-500">
           <span className="flex items-center gap-1">
             <span className="text-cyan-400">💬</span>
-            {agent.conversation_count} 对话
+            {agent.conversation_count} chats
           </span>
         </div>
 
-        {/* 分隔线 */}
+        {/* Divider */}
         <div className="h-px bg-gradient-to-r from-transparent via-gray-700 to-transparent mb-4" />
 
-        {/* 操作按钮 */}
+        {/* Action buttons */}
         <div className="flex gap-2">
           <button
             onClick={() => onChat(agent.id)}
@@ -102,7 +102,7 @@ function AgentCard({ agent, onChat, onEdit, onDelete }: AgentCardProps) {
             `}
           >
             <span>💬</span>
-            对话
+            Chat
           </button>
 
           <button
@@ -115,7 +115,7 @@ function AgentCard({ agent, onChat, onEdit, onDelete }: AgentCardProps) {
             "
           >
             <span>✏️</span>
-            编辑
+            Edit
           </button>
 
           <button
@@ -134,5 +134,5 @@ function AgentCard({ agent, onChat, onEdit, onDelete }: AgentCardProps) {
   )
 }
 
-// 使用 memo 优化性能
+// Use memo to optimize performance
 export default memo(AgentCard)

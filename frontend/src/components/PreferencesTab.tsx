@@ -126,7 +126,7 @@ export default function PreferencesTab({ token }: PreferencesTabProps) {
               onChange={(e) => setLanguage(e.target.value as Language)}
               className="px-4 py-2 bg-gray-900/50 border border-purple-500/30 rounded text-gray-100 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all"
             >
-              <option value="zh-CN">简体中文</option>
+              <option value="zh-CN">Chinese (Simplified)</option>
               <option value="en-US">English</option>
             </select>
           </SettingItem>

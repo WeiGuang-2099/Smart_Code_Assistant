@@ -13,35 +13,35 @@ export default function ConversationsTab({ token }: ConversationsTabProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
 
-  // 加载会话列表 - 由于 API 需要按 agent_id 获取，这里使用模拟数据
-  // 实际项目中可能需要一个新的 API 端点来获取用户所有会话
+  // Load conversation list - since the API fetches by agent_id, mock data is used here
+  // A real project may need a new API endpoint to fetch all user conversations
   const loadConversations = useCallback(async () => {
     setLoading(true)
     setError('')
 
     try {
-      // 先获取所有智能体
+      // First fetch all agents
       const agentsResponse = await agentService.getAgents(token)
       const allConversations: Conversation[] = []
 
-      // 获取每个智能体的会话
+      // Fetch each agent's conversations
       for (const agent of agentsResponse.items) {
         try {
           const convResponse = await agentService.getAgentConversations(token, agent.id)
           allConversations.push(...convResponse.items)
         } catch {
-          // 忽略单个智能体的错误
+          // Ignore errors for individual agents
         }
       }
 
-      // 按更新时间排序
+      // Sort by update time
       allConversations.sort(
         (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
       )
 
       setConversations(allConversations)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败')
+      setError(err instanceof Error ? err.message : 'Failed to load')
     } finally {
       setLoading(false)
     }
@@ -57,7 +57,7 @@ export default function ConversationsTab({ token }: ConversationsTabProps) {
       setConversations((prev) => prev.filter((c) => c.id !== conversationId))
       setDeleteConfirm(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '删除失败')
+      setError(err instanceof Error ? err.message : 'Delete failed')
     }
   }
 
@@ -70,9 +70,9 @@ export default function ConversationsTab({ token }: ConversationsTabProps) {
     if (days === 0) {
       return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
     } else if (days === 1) {
-      return '昨天'
+      return 'Yesterday'
     } else if (days < 7) {
-      return `${days}天前`
+      return `${days} days ago`
     } else {
       return date.toLocaleDateString('zh-CN')
     }
@@ -88,13 +88,13 @@ export default function ConversationsTab({ token }: ConversationsTabProps) {
 
   return (
     <div className="space-y-6">
-      {/* 搜索框 */}
+      {/* Search box */}
       <div className="relative">
         <input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="搜索会话..."
+          placeholder="Search conversations..."
           className="w-full px-4 py-3 bg-gray-900/50 border border-cyan-500/30 rounded
                      text-gray-100 placeholder-gray-500 focus:border-cyan-500
                      focus:ring-2 focus:ring-cyan-500/20 transition-all"
@@ -102,7 +102,7 @@ export default function ConversationsTab({ token }: ConversationsTabProps) {
         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">🔍</span>
       </div>
 
-      {/* 错误提示 */}
+      {/* Error message */}
       {error && (
         <div className="p-4 border border-red-500/50 rounded bg-red-500/10 flex justify-between items-center">
           <p className="text-sm text-red-400">{error}</p>
@@ -112,27 +112,27 @@ export default function ConversationsTab({ token }: ConversationsTabProps) {
         </div>
       )}
 
-      {/* 加载状态 */}
+      {/* Loading state */}
       {loading && (
         <div className="text-center py-12">
           <div className="animate-spin text-4xl neon-text">◌</div>
-          <p className="text-gray-400 mt-4">加载中...</p>
+          <p className="text-gray-400 mt-4">Loading...</p>
         </div>
       )}
 
-      {/* 空状态 */}
+      {/* Empty state */}
       {!loading && filteredConversations.length === 0 && (
         <div className="cyber-card p-12 text-center">
           <div className="text-6xl mb-4 opacity-50">💬</div>
           <h3 className="text-2xl font-semibold neon-text mb-4">NO CONVERSATIONS</h3>
           <div className="h-1 w-48 mx-auto bg-gradient-to-r from-transparent via-cyan-500 to-transparent mb-6"></div>
           <p className="text-gray-400">
-            {searchQuery ? '没有找到匹配的会话' : '还没有会话记录'}
+            {searchQuery ? 'No matching conversations found' : 'No conversations yet'}
           </p>
         </div>
       )}
 
-      {/* 会话列表 */}
+      {/* Conversation list */}
       {!loading && filteredConversations.length > 0 && (
         <div className="space-y-2">
           {filteredConversations.map((conversation) => (
@@ -144,7 +144,7 @@ export default function ConversationsTab({ token }: ConversationsTabProps) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <h4 className="text-gray-200 font-medium truncate">
-                      {conversation.title || '未命名会话'}
+                      {conversation.title || 'Untitled conversation'}
                     </h4>
                     <span className="text-xs text-gray-500">
                       {formatDate(conversation.updated_at)}
@@ -156,18 +156,18 @@ export default function ConversationsTab({ token }: ConversationsTabProps) {
                   <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
                     <span className="flex items-center gap-1">
                       <span className="text-cyan-400">💬</span>
-                      {conversation.message_count} 条消息
+                      {conversation.message_count} messages
                     </span>
                   </div>
                 </div>
 
-                {/* 操作按钮 */}
+                {/* Action buttons */}
                 <button
                   onClick={() => setDeleteConfirm(conversation.id)}
                   className="opacity-0 group-hover:opacity-100 transition-opacity px-3 py-1.5
                              text-red-400 hover:bg-red-500/10 rounded text-sm"
                 >
-                  删除
+                  Delete
                 </button>
               </div>
             </div>
@@ -175,27 +175,27 @@ export default function ConversationsTab({ token }: ConversationsTabProps) {
         </div>
       )}
 
-      {/* 删除确认对话框 */}
+      {/* Delete confirmation dialog */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="cyber-card max-w-sm w-full p-6 animate-slideUp">
-            <h3 className="text-xl font-bold text-red-400 mb-4">确认删除</h3>
+            <h3 className="text-xl font-bold text-red-400 mb-4">Confirm Delete</h3>
             <p className="text-gray-400 mb-6">
-              确定要删除这个会话吗？所有消息都将被删除。
+              Are you sure you want to delete this conversation? All messages will be deleted.
             </p>
             <div className="flex gap-4">
               <button
                 onClick={() => setDeleteConfirm(null)}
                 className="flex-1 cyber-btn py-3"
               >
-                取消
+                Cancel
               </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
                 className="flex-1 cyber-btn py-3"
                 style={{ borderColor: 'var(--color-neon-pink)', color: 'var(--color-neon-pink)' }}
               >
-                确认删除
+                Confirm Delete
               </button>
             </div>
           </div>

@@ -17,8 +17,8 @@ import type {
   AgentNameSuggestionRequest,
   AgentNameSuggestionResponse,
 } from '../types/agent'
+import { apiFetch } from '../lib/apiClient'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 /**
  * Get authorization headers with token
@@ -64,9 +64,9 @@ export async function getAgents(
   if (params?.search) searchParams.set('search', params.search)
 
   const queryString = searchParams.toString()
-  const url = `${API_URL}/api/v1/agents${queryString ? `?${queryString}` : ''}`
+  const url = `/api/v1/agents${queryString ? `?${queryString}` : ''}`
 
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   })
 
@@ -77,7 +77,7 @@ export async function getAgents(
  * Get a specific agent by ID
  */
 export async function getAgent(token: string, agentId: number): Promise<AgentDetail> {
-  const response = await fetch(`${API_URL}/api/v1/agents/${agentId}`, {
+  const response = await apiFetch(`/api/v1/agents/${agentId}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
 
@@ -88,7 +88,7 @@ export async function getAgent(token: string, agentId: number): Promise<AgentDet
  * Create a new agent
  */
 export async function createAgent(token: string, data: AgentCreate): Promise<Agent> {
-  const response = await fetch(`${API_URL}/api/v1/agents`, {
+  const response = await apiFetch(`/api/v1/agents`, {
     method: 'POST',
     headers: getAuthHeaders(token),
     body: JSON.stringify(data),
@@ -105,7 +105,7 @@ export async function updateAgent(
   agentId: number,
   data: AgentUpdate
 ): Promise<Agent> {
-  const response = await fetch(`${API_URL}/api/v1/agents/${agentId}`, {
+  const response = await apiFetch(`/api/v1/agents/${agentId}`, {
     method: 'PUT',
     headers: getAuthHeaders(token),
     body: JSON.stringify(data),
@@ -122,7 +122,7 @@ export async function updateAgentStatus(
   agentId: number,
   data: AgentStatusUpdate
 ): Promise<Agent> {
-  const response = await fetch(`${API_URL}/api/v1/agents/${agentId}/status`, {
+  const response = await apiFetch(`/api/v1/agents/${agentId}/status`, {
     method: 'PATCH',
     headers: getAuthHeaders(token),
     body: JSON.stringify(data),
@@ -135,7 +135,7 @@ export async function updateAgentStatus(
  * Delete an agent
  */
 export async function deleteAgent(token: string, agentId: number): Promise<void> {
-  const response = await fetch(`${API_URL}/api/v1/agents/${agentId}`, {
+  const response = await apiFetch(`/api/v1/agents/${agentId}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   })
@@ -159,9 +159,9 @@ export async function getAgentConversations(
   if (params?.page_size) searchParams.set('page_size', String(params.page_size))
 
   const queryString = searchParams.toString()
-  const url = `${API_URL}/api/v1/agents/${agentId}/conversations${queryString ? `?${queryString}` : ''}`
+  const url = `/api/v1/agents/${agentId}/conversations${queryString ? `?${queryString}` : ''}`
 
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   })
 
@@ -177,7 +177,7 @@ export async function createConversation(
   token: string,
   data: ConversationCreate
 ): Promise<ConversationDetail> {
-  const response = await fetch(`${API_URL}/api/v1/conversations`, {
+  const response = await apiFetch(`/api/v1/conversations`, {
     method: 'POST',
     headers: getAuthHeaders(token),
     body: JSON.stringify(data),
@@ -193,7 +193,7 @@ export async function getConversation(
   token: string,
   conversationId: number
 ): Promise<ConversationDetail> {
-  const response = await fetch(`${API_URL}/api/v1/conversations/${conversationId}`, {
+  const response = await apiFetch(`/api/v1/conversations/${conversationId}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
 
@@ -204,7 +204,7 @@ export async function getConversation(
  * Delete a conversation
  */
 export async function deleteConversation(token: string, conversationId: number): Promise<void> {
-  const response = await fetch(`${API_URL}/api/v1/conversations/${conversationId}`, {
+  const response = await apiFetch(`/api/v1/conversations/${conversationId}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   })
@@ -230,9 +230,9 @@ export async function getTrainingTasks(
   if (params?.page_size) searchParams.set('page_size', String(params.page_size))
 
   const queryString = searchParams.toString()
-  const url = `${API_URL}/api/v1/training-tasks${queryString ? `?${queryString}` : ''}`
+  const url = `/api/v1/training-tasks${queryString ? `?${queryString}` : ''}`
 
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     headers: { Authorization: `Bearer ${token}` },
   })
 
@@ -246,7 +246,7 @@ export async function createTrainingTask(
   token: string,
   data: TrainingTaskCreate
 ): Promise<TrainingTask> {
-  const response = await fetch(`${API_URL}/api/v1/training-tasks`, {
+  const response = await apiFetch(`/api/v1/training-tasks`, {
     method: 'POST',
     headers: getAuthHeaders(token),
     body: JSON.stringify(data),
@@ -262,7 +262,7 @@ export async function getTrainingTask(
   token: string,
   taskId: number
 ): Promise<TrainingTask> {
-  const response = await fetch(`${API_URL}/api/v1/training-tasks/${taskId}`, {
+  const response = await apiFetch(`/api/v1/training-tasks/${taskId}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
 
@@ -278,7 +278,7 @@ export async function suggestAgentName(
   token: string,
   data: AgentNameSuggestionRequest
 ): Promise<AgentNameSuggestionResponse> {
-  const response = await fetch(`${API_URL}/api/v1/agents/suggest-name`, {
+  const response = await apiFetch(`/api/v1/agents/suggest-name`, {
     method: 'POST',
     headers: getAuthHeaders(token),
     body: JSON.stringify(data),

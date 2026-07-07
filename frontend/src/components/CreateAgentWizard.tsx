@@ -11,14 +11,14 @@ interface CreateAgentWizardProps {
 
 type WizardStep = 'basic' | 'purpose' | 'confirm'
 
-// 可选领域列表
+// Available domains
 const DOMAIN_OPTIONS = [
-  { value: 'code', label: '代码开发', icon: '💻' },
-  { value: 'writing', label: '内容写作', icon: '✍️' },
-  { value: 'analysis', label: '数据分析', icon: '📊' },
-  { value: 'design', label: '设计创意', icon: '🎨' },
-  { value: 'translation', label: '翻译', icon: '🌐' },
-  { value: 'general', label: '通用助手', icon: '🤖' },
+  { value: 'code', label: 'Code Development', icon: '💻' },
+  { value: 'writing', label: 'Content Writing', icon: '✍️' },
+  { value: 'analysis', label: 'Data Analysis', icon: '📊' },
+  { value: 'design', label: 'Design & Creative', icon: '🎨' },
+  { value: 'translation', label: 'Translation', icon: '🌐' },
+  { value: 'general', label: 'General Assistant', icon: '🤖' },
 ]
 
 export default function CreateAgentWizard({
@@ -31,12 +31,12 @@ export default function CreateAgentWizard({
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
 
-  // AI建议相关状态
+  // AI suggestion state
   const [suggestingName, setSuggestingName] = useState(false)
   const [suggestedNames, setSuggestedNames] = useState<string[]>([])
   const [showNameSuggestions, setShowNameSuggestions] = useState(false)
 
-  // 表单数据
+  // Form data
   const [formData, setFormData] = useState<AgentCreate>({
     name: '',
     domain: '',
@@ -45,9 +45,9 @@ export default function CreateAgentWizard({
   })
 
   const steps = [
-    { id: 'basic' as WizardStep, label: '基础信息', icon: '1️⃣' },
-    { id: 'purpose' as WizardStep, label: '目的描述', icon: '2️⃣' },
-    { id: 'confirm' as WizardStep, label: '确认创建', icon: '3️⃣' },
+    { id: 'basic' as WizardStep, label: 'Basic Info', icon: '1️⃣' },
+    { id: 'purpose' as WizardStep, label: 'Purpose', icon: '2️⃣' },
+    { id: 'confirm' as WizardStep, label: 'Confirm', icon: '3️⃣' },
   ]
 
   const updateFormData = (field: keyof AgentCreate, value: string) => {
@@ -88,11 +88,11 @@ export default function CreateAgentWizard({
     try {
       const agent = await agentService.createAgent(token, formData)
       onComplete(agent)
-      // 重置表单
+      // Reset form
       setFormData({ name: '', domain: '', description: '', system_prompt: '' })
       setCurrentStep('basic')
     } catch (err) {
-      setError(err instanceof Error ? err.message : '创建失败')
+      setError(err instanceof Error ? err.message : 'Creation failed')
     } finally {
       setCreating(false)
     }
@@ -107,7 +107,7 @@ export default function CreateAgentWizard({
     onClose()
   }
 
-  // AI名称建议功能
+  // AI name suggestion feature
   const handleSuggestName = async () => {
     if (!formData.domain) return
 
@@ -123,7 +123,7 @@ export default function CreateAgentWizard({
       setSuggestedNames(response.names)
       setShowNameSuggestions(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '获取AI建议失败')
+      setError(err instanceof Error ? err.message : 'Failed to get AI suggestions')
     } finally {
       setSuggestingName(false)
     }
@@ -139,7 +139,7 @@ export default function CreateAgentWizard({
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="cyber-card max-w-lg w-full p-8 animate-slideUp">
-        {/* 头部 */}
+        {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-2xl font-bold neon-text-purple tracking-wider">
             {'<CREATE AGENT />'}
@@ -152,7 +152,7 @@ export default function CreateAgentWizard({
           </button>
         </div>
 
-        {/* 步骤指示器 */}
+        {/* Step indicator */}
         <div className="flex items-center justify-between mb-8">
           {steps.map((step, index) => (
             <div key={step.id} className="flex items-center">
@@ -184,7 +184,7 @@ export default function CreateAgentWizard({
           ))}
         </div>
 
-        {/* 错误提示 */}
+        {/* Error message */}
         {error && (
           <div className="mb-4 p-3 border border-red-500/50 rounded bg-red-500/10 flex justify-between items-center">
             <p className="text-sm text-red-400">{error}</p>
@@ -194,14 +194,14 @@ export default function CreateAgentWizard({
           </div>
         )}
 
-        {/* 步骤内容 */}
+        {/* Step content */}
         <div className="min-h-[200px]">
-          {/* Step 1: 基础信息 */}
+          {/* Step 1: Basic Info */}
           {currentStep === 'basic' && (
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-purple-300 mb-2">
-                  智能体名称 *
+                  Agent Name *
                 </label>
                 <input
                   type="text"
@@ -210,14 +210,14 @@ export default function CreateAgentWizard({
                   className="w-full px-4 py-3 bg-gray-900/50 border border-purple-500/30 rounded
                              text-gray-100 placeholder-gray-500 focus:border-purple-500
                              focus:ring-2 focus:ring-purple-500/20 transition-all"
-                  placeholder="给智能体起个名字..."
+                  placeholder="Give your agent a name..."
                   maxLength={100}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-purple-300 mb-2">
-                  主要领域
+                  Primary Domain
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {DOMAIN_OPTIONS.map((option) => (
@@ -241,7 +241,7 @@ export default function CreateAgentWizard({
                 </div>
               </div>
 
-              {/* AI名称建议 */}
+              {/* AI Name Suggestions */}
               <div className="pt-2">
                 <button
                   type="button"
@@ -260,27 +260,27 @@ export default function CreateAgentWizard({
                   {suggestingName ? (
                     <>
                       <span className="animate-spin">◌</span>
-                      <span>AI思考中...</span>
+                      <span>AI thinking...</span>
                     </>
                   ) : (
                     <>
                       <span>✨</span>
-                      <span>AI帮我想个名称</span>
+                      <span>Let AI suggest a name</span>
                     </>
                   )}
                 </button>
                 {!formData.domain && (
                   <p className="text-xs text-gray-500 mt-1 text-center">
-                    请先选择一个领域
+                    Please select a domain first
                   </p>
                 )}
 
-                {/* 建议的名称列表 */}
+                {/* Suggested names list */}
                 {showNameSuggestions && suggestedNames.length > 0 && (
                   <div className="mt-3 p-3 bg-gray-800/50 rounded border border-purple-500/30">
                     <p className="text-xs text-purple-300 mb-2 flex items-center gap-1">
                       <span>💡</span>
-                      <span>AI推荐的名称：</span>
+                      <span>AI-recommended names:</span>
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {suggestedNames.map((name, index) => (
@@ -298,7 +298,7 @@ export default function CreateAgentWizard({
                       ))}
                     </div>
                     <p className="text-xs text-gray-500 mt-2">
-                      点击名称即可使用
+                      Click a name to use it
                     </p>
                   </div>
                 )}
@@ -306,12 +306,12 @@ export default function CreateAgentWizard({
             </div>
           )}
 
-          {/* Step 2: 目的描述 */}
+          {/* Step 2: Purpose */}
           {currentStep === 'purpose' && (
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-purple-300 mb-2">
-                  详细描述 *
+                  Detailed Description *
                 </label>
                 <textarea
                   value={formData.description}
@@ -319,14 +319,14 @@ export default function CreateAgentWizard({
                   className="w-full px-4 py-3 bg-gray-900/50 border border-purple-500/30 rounded
                              text-gray-100 placeholder-gray-500 focus:border-purple-500
                              focus:ring-2 focus:ring-purple-500/20 transition-all resize-none"
-                  placeholder="描述这个智能体的用途、特点..."
+                  placeholder="Describe what this agent does and its characteristics..."
                   rows={4}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-purple-300 mb-2">
-                  系统提示词（可选）
+                  System Prompt (optional)
                 </label>
                 <textarea
                   value={formData.system_prompt}
@@ -334,34 +334,34 @@ export default function CreateAgentWizard({
                   className="w-full px-4 py-3 bg-gray-900/50 border border-purple-500/30 rounded
                              text-gray-100 placeholder-gray-500 focus:border-purple-500
                              focus:ring-2 focus:ring-purple-500/20 transition-all resize-none font-mono text-sm"
-                  placeholder="你是一个专业的助手..."
+                  placeholder="You are a professional assistant..."
                   rows={4}
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  定义智能体的行为方式和角色设定
+                  Define the agent's behavior and persona
                 </p>
               </div>
             </div>
           )}
 
-          {/* Step 3: 确认创建 */}
+          {/* Step 3: Confirm */}
           {currentStep === 'confirm' && (
             <div className="space-y-4">
               <div className="p-4 bg-gray-800/50 rounded border border-gray-700">
-                <h4 className="text-sm font-medium text-cyan-300 mb-3">配置预览</h4>
+                <h4 className="text-sm font-medium text-cyan-300 mb-3">Configuration Preview</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">名称：</span>
+                    <span className="text-gray-500">Name:</span>
                     <span className="text-gray-200">{formData.name}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">领域：</span>
+                    <span className="text-gray-500">Domain:</span>
                     <span className="text-gray-200">
-                      {DOMAIN_OPTIONS.find((d) => d.value === formData.domain)?.label || '未设置'}
+                      {DOMAIN_OPTIONS.find((d) => d.value === formData.domain)?.label || 'Not set'}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">描述：</span>
+                    <span className="text-gray-500">Description:</span>
                     <span className="text-gray-200 text-right max-w-[200px] truncate">
                       {formData.description}
                     </span>
@@ -370,13 +370,13 @@ export default function CreateAgentWizard({
               </div>
 
               <p className="text-center text-gray-400 text-sm">
-                确认创建智能体「{formData.name}」？
+                Create agent "{formData.name}"?
               </p>
             </div>
           )}
         </div>
 
-        {/* 底部按钮 */}
+        {/* Footer buttons */}
         <div className="flex gap-4 mt-6">
           {currentStep !== 'basic' && (
             <button
@@ -384,7 +384,7 @@ export default function CreateAgentWizard({
               className="flex-1 cyber-btn py-3"
               disabled={creating}
             >
-              上一步
+              Back
             </button>
           )}
 
@@ -398,7 +398,7 @@ export default function CreateAgentWizard({
                 color: canProceed() ? 'var(--color-neon-green)' : undefined,
               }}
             >
-              下一步
+              Next
             </button>
           ) : (
             <button
@@ -407,7 +407,7 @@ export default function CreateAgentWizard({
               className="flex-1 cyber-btn py-3 disabled:opacity-50"
               style={{ borderColor: 'var(--color-neon-green)', color: 'var(--color-neon-green)' }}
             >
-              {creating ? '创建中...' : '确认创建'}
+              {creating ? 'Creating...' : 'Confirm'}
             </button>
           )}
         </div>

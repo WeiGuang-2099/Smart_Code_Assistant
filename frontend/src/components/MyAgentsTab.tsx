@@ -28,7 +28,7 @@ export default function MyAgentsTab({ token }: MyAgentsTabProps) {
       })
       setAgents(response.items)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败')
+      setError(err instanceof Error ? err.message : 'Failed to load')
     } finally {
       setLoading(false)
     }
@@ -52,7 +52,7 @@ export default function MyAgentsTab({ token }: MyAgentsTabProps) {
       setAgents((prev) => prev.filter((a) => a.id !== agentId))
       setDeleteConfirm(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '删除失败')
+      setError(err instanceof Error ? err.message : 'Delete failed')
     }
   }
 
@@ -71,14 +71,14 @@ export default function MyAgentsTab({ token }: MyAgentsTabProps) {
 
   return (
     <div className="space-y-6">
-      {/* 头部：搜索和创建按钮 */}
+      {/* Header: search and create buttons */}
       <div className="flex gap-4">
         <div className="flex-1 relative">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="搜索智能体..."
+            placeholder="Search agents..."
             className="w-full px-4 py-3 bg-gray-900/50 border border-cyan-500/30 rounded
                        text-gray-100 placeholder-gray-500 focus:border-cyan-500
                        focus:ring-2 focus:ring-cyan-500/20 transition-all"
@@ -90,11 +90,11 @@ export default function MyAgentsTab({ token }: MyAgentsTabProps) {
           className="cyber-btn px-6 py-3"
           style={{ borderColor: 'var(--color-neon-green)', color: 'var(--color-neon-green)' }}
         >
-          + 创建智能体
+          + Create Agent
         </button>
       </div>
 
-      {/* 错误提示 */}
+      {/* Error message */}
       {error && (
         <div className="p-4 border border-red-500/50 rounded bg-red-500/10 flex justify-between items-center">
           <p className="text-sm text-red-400">{error}</p>
@@ -104,24 +104,24 @@ export default function MyAgentsTab({ token }: MyAgentsTabProps) {
         </div>
       )}
 
-      {/* 加载状态 */}
+      {/* Loading state */}
       {loading && (
         <div className="text-center py-12">
           <div className="inline-block relative">
             <div className="animate-spin text-4xl neon-text">◌</div>
           </div>
-          <p className="text-gray-400 mt-4">加载中...</p>
+          <p className="text-gray-400 mt-4">Loading...</p>
         </div>
       )}
 
-      {/* 空状态 */}
+      {/* Empty state */}
       {!loading && filteredAgents.length === 0 && (
         <div className="cyber-card p-12 text-center">
           <div className="text-6xl mb-4 opacity-50">🤖</div>
           <h3 className="text-2xl font-semibold neon-text mb-4">NO AGENTS</h3>
           <div className="h-1 w-48 mx-auto bg-gradient-to-r from-transparent via-cyan-500 to-transparent mb-6"></div>
           <p className="text-gray-400 mb-8">
-            {searchQuery ? '没有找到匹配的智能体' : '还没有创建任何智能体'}
+            {searchQuery ? 'No matching agents found' : 'No agents created yet'}
           </p>
           {!searchQuery && (
             <button
@@ -129,13 +129,13 @@ export default function MyAgentsTab({ token }: MyAgentsTabProps) {
               className="cyber-btn px-6 py-3"
               style={{ borderColor: 'var(--color-neon-green)', color: 'var(--color-neon-green)' }}
             >
-              创建第一个智能体
+              Create your first agent
             </button>
           )}
         </div>
       )}
 
-      {/* 智能体卡片网格 */}
+      {/* Agent card grid */}
       {!loading && filteredAgents.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredAgents.map((agent) => (
@@ -150,7 +150,7 @@ export default function MyAgentsTab({ token }: MyAgentsTabProps) {
         </div>
       )}
 
-      {/* 创建向导 */}
+      {/* Create wizard */}
       <CreateAgentWizard
         open={showCreateWizard}
         token={token}
@@ -158,27 +158,27 @@ export default function MyAgentsTab({ token }: MyAgentsTabProps) {
         onComplete={handleCreateComplete}
       />
 
-      {/* 删除确认对话框 */}
+      {/* Delete confirmation dialog */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="cyber-card max-w-sm w-full p-6 animate-slideUp">
-            <h3 className="text-xl font-bold text-red-400 mb-4">确认删除</h3>
+            <h3 className="text-xl font-bold text-red-400 mb-4">Confirm Delete</h3>
             <p className="text-gray-400 mb-6">
-              确定要删除这个智能体吗？此操作无法撤销。
+              Are you sure you want to delete this agent? This action cannot be undone.
             </p>
             <div className="flex gap-4">
               <button
                 onClick={() => setDeleteConfirm(null)}
                 className="flex-1 cyber-btn py-3"
               >
-                取消
+                Cancel
               </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
                 className="flex-1 cyber-btn py-3"
                 style={{ borderColor: 'var(--color-neon-pink)', color: 'var(--color-neon-pink)' }}
               >
-                确认删除
+                Confirm Delete
               </button>
             </div>
           </div>
