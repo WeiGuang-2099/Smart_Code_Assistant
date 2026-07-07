@@ -284,6 +284,55 @@ A demo user is seeded on first startup:
 | Health | `/api/v1/health` | Service health check |
 | Metrics | `/metrics` | Prometheus metrics |
 
+## MCP Server
+
+The code-graph engine is also exposed as a [Model Context Protocol](https://modelcontextprotocol.io)
+server, so MCP clients such as Claude Code and Claude Desktop can query the
+indexed codebase directly. It runs over stdio and reuses the same Neo4j +
+ChromaDB services as the backend.
+
+**Tools**
+
+| Tool | Purpose |
+|---|---|
+| `search_codebase` | Hybrid semantic + graph search (GraphRAG) |
+| `find_callers` | Functions that call a given function |
+| `find_callees` | Functions a given function calls |
+| `impact_analysis` | Blast radius of changing a symbol |
+| `find_call_path` | Call paths between two functions |
+| `explain_symbol` | Signature, docstring, and graph neighbors of a symbol |
+
+**Prerequisites:** the Docker infrastructure services running (see Getting
+Started) and the corpus indexed. The server runs in its own virtualenv
+(isolated from the web stack, which pins an older pydantic):
+
+```bash
+cd backend-fastapi
+python -m venv venv-mcp
+venv-mcp/Scripts/pip install -r requirements-mcp.txt
+```
+
+**Claude Code**
+
+```bash
+cd backend-fastapi
+claude mcp add code-graph -- ./venv-mcp/Scripts/python.exe -m app.mcp.server
+```
+
+**Claude Desktop** — add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "code-graph": {
+      "command": "D:\\codeproject\\Smart_Code_Assistant\\backend-fastapi\\venv-mcp\\Scripts\\python.exe",
+      "args": ["-m", "app.mcp.server"],
+      "cwd": "D:\\codeproject\\Smart_Code_Assistant\\backend-fastapi"
+    }
+  }
+}
+```
+
 ## Configuration
 
 ### Environment Variables
