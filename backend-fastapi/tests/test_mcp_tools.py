@@ -100,3 +100,69 @@ async def test_find_callees_empty_returns_sentence():
     with patch.object(tools, "get_neo4j_client", AsyncMock(return_value=neo4j)):
         out = await tools.find_callees("register")
     assert out == "No callees found for register."
+
+
+async def test_impact_analysis_lists_affected():
+    retriever = MagicMock()
+    retriever.analyze_impact = AsyncMock(return_value={
+        "impacted": [{"name": "login", "module_path": "app/api/auth.py"}],
+        "total_count": 1,
+    })
+    with patch.object(tools, "get_retriever", return_value=retriever):
+        out = await tools.impact_analysis("get_password_hash")
+    assert "Impact of changing get_password_hash - 1 affected:" in out
+    assert "- login (app/api/auth.py)" in out
+
+
+async def test_impact_analysis_empty_returns_sentence():
+    retriever = MagicMock()
+    retriever.analyze_impact = AsyncMock(
+        return_value={"impacted": [], "total_count": 0}
+    )
+    with patch.object(tools, "get_retriever", return_value=retriever):
+        out = await tools.impact_analysis("x")
+    assert out == "No downstream impact found for x."
+
+
+async def test_find_call_path_numbers_paths():
+    retriever = MagicMock()
+    retriever.find_paths = AsyncMock(return_value=[
+        [{"name": "register"}, {"name": "get_password_hash"}],
+    ])
+    with patch.object(tools, "get_retriever", return_value=retriever):
+        out = await tools.find_call_path("register", "get_password_hash")
+    assert "1. register -> get_password_hash" in out
+
+
+async def test_find_call_path_empty_returns_sentence():
+    retriever = MagicMock()
+    retriever.find_paths = AsyncMock(return_value=[])
+    with patch.object(tools, "get_retriever", return_value=retriever):
+        out = await tools.find_call_path("a", "b", max_depth=5)
+    assert out == "No call path from a to b within depth 5."
+
+
+async def test_explain_symbol_composes_signature_and_neighbors():
+    neo4j = MagicMock()
+    neo4j.get_entity = AsyncMock(return_value={
+        "name": "register", "module_path": "app/api/auth.py", "class_name": None,
+        "type": "function", "signature": "def register(data)", "docstring": "Reg.",
+    })
+    neo4j.get_entity_neighbors = AsyncMock(return_value=[{
+        "name": "get_password_hash", "module_path": "app/core/security.py",
+        "relation": "callee", "source": "register",
+    }])
+    with patch.object(tools, "get_neo4j_client", AsyncMock(return_value=neo4j)):
+        out = await tools.explain_symbol("register")
+    assert "function register (app/api/auth.py)" in out
+    assert "def register(data)" in out
+    assert "Related:" in out
+    assert "- callee: get_password_hash (app/core/security.py)" in out
+
+
+async def test_explain_symbol_not_found_returns_sentence():
+    neo4j = MagicMock()
+    neo4j.get_entity = AsyncMock(return_value=None)
+    with patch.object(tools, "get_neo4j_client", AsyncMock(return_value=neo4j)):
+        out = await tools.explain_symbol("does_not_exist")
+    assert out == "Symbol does_not_exist not found in the code graph."
