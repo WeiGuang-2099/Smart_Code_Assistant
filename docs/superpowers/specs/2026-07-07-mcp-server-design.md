@@ -61,10 +61,16 @@ New package `backend-fastapi/app/mcp/` (distinct from the LangChain
 | `app/mcp/tools.py` | Six transport-agnostic async functions. Each takes plain args, calls the service layer, and returns a clean labelled plain-text string (no emojis). This is the reusable core; a future HTTP transport binds the same functions. |
 | `app/mcp/server.py` | Builds a `FastMCP` instance, registers the six tools via `@mcp.tool()`, manages the Neo4j connection via a FastMCP lifespan. Entry point `python -m app.mcp.server` runs stdio transport. |
 
-- **Dependency:** the official `mcp` Python SDK (bundles `FastMCP`, imported
-  as `from mcp.server.fastmcp import FastMCP`), added to `requirements.txt`
-  and `requirements-ci.txt` with a version floor. Exact floor pinned in the
-  plan against the currently released version.
+- **Dependency (isolated):** the official `mcp` Python SDK (bundles
+  `FastMCP`, imported as `from mcp.server.fastmcp import FastMCP`). Modern
+  `mcp` requires `pydantic>=2.11`, which is unsatisfiable against the app's
+  pinned `fastapi==0.115.0` / `pydantic==2.9.2` / `starlette<0.39`. Because
+  the code-graph service layer imports neither FastAPI nor Starlette, the MCP
+  server runs in a dedicated virtualenv from a separate
+  `requirements-mcp.txt` (mcp + neo4j/chromadb/sentence-transformers, no web
+  stack) — NOT added to `requirements.txt`/`requirements-ci.txt`. A follow-up
+  branch upgrading the backend to pydantic>=2.11 can later fold `mcp` into
+  the single venv.
 - **Connections:** reuse `CodeGraphConfig` / `settings` — the same Docker
   Neo4j + ChromaDB the app already uses. Retriever/ChromaDB singletons stay
   lazy; the lifespan warms the Neo4j client on startup and closes all clients

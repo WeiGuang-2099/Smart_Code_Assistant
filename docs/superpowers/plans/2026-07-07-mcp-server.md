@@ -12,13 +12,32 @@
 
 - No emojis anywhere — tool output is labelled plain text (user global rule).
 - No Co-Authored-By / AI attribution in any commit message (user global rule).
-- Dependency: official `mcp` SDK, floor `mcp>=1.9.0`, added to BOTH `backend-fastapi/requirements.txt` and `backend-fastapi/requirements-ci.txt`.
+- Dependency (ISOLATED — see Dependency Strategy below): official `mcp` SDK, floor `mcp>=1.12`, declared in a NEW `backend-fastapi/requirements-mcp.txt` installed into a dedicated `backend-fastapi/venv-mcp`. It is NOT added to `requirements.txt`/`requirements-ci.txt`, because modern `mcp` requires `pydantic>=2.11` which is unsatisfiable against the app's pinned `fastapi==0.115.0` / `pydantic==2.9.2` / `starlette<0.39`.
 - stdout is reserved for the MCP protocol: all logging goes to stderr; no `print` in `app/mcp/*`.
 - Tests are offline/mocked (no Docker, no live DB); `pytest asyncio_mode = auto` (no `@pytest.mark.asyncio` decorator needed); mock with `unittest.mock.AsyncMock` / `patch`.
 - Reuse the existing services; do not duplicate retrieval or Cypher logic that already exists (the one new query is `Neo4jClient.get_entity`, Task 2).
 - Package location: `backend-fastapi/app/mcp/`.
 - Every tool takes an optional `project_id: int = 1`; on any exception returns `Error: <reason>`; on an empty result returns a friendly sentence (never an empty string, never a stack trace).
-- All commands below run from the `backend-fastapi/` directory using the project venv `./venv312/Scripts/python.exe`.
+- Commands run from `backend-fastapi/`. Use `./venv312/Scripts/python.exe` (the main app venv) for everything EXCEPT `app/mcp/server.py` and `tests/test_mcp_server.py`, which import `mcp` and therefore run under `./venv-mcp/Scripts/python.exe`.
+
+## Dependency Strategy (isolation)
+
+`app/mcp/tools.py` is transport-agnostic and does NOT import `mcp`; only
+`app/mcp/server.py` imports `mcp`. The code-graph service layer imports
+neither FastAPI nor Starlette (verified), so the MCP process runs in its own
+environment with no web stack:
+
+- `backend-fastapi/requirements-mcp.txt` — `mcp>=1.12` plus the service
+  layer's runtime deps (neo4j, chromadb, sentence-transformers, tenacity,
+  tiktoken, pydantic-settings, python-dotenv). No fastapi/uvicorn/starlette.
+- Installed into `backend-fastapi/venv-mcp` (gitignored, like venv312).
+- Consequence for tests: helper + tool tests (`tests/test_mcp_tools.py`,
+  `tests/test_neo4j_get_entity.py`) run in venv312 (they mock the service
+  layer and never import `mcp`). The server registration test
+  (`tests/test_mcp_server.py`) runs in venv-mcp.
+- Follow-up (separate branch, not this plan): upgrade the backend to
+  pydantic>=2.11 / modern FastAPI, after which `mcp` can fold into the single
+  venv and `requirements-mcp.txt` / `venv-mcp` can be retired.
 
 ---
 
@@ -41,27 +60,47 @@
 **Files:**
 - Create: `backend-fastapi/app/mcp/__init__.py`
 - Create: `backend-fastapi/app/mcp/tools.py`
-- Modify: `backend-fastapi/requirements.txt` (add `mcp>=1.9.0`)
-- Modify: `backend-fastapi/requirements-ci.txt` (add `mcp>=1.9.0`)
+- Create: `backend-fastapi/requirements-mcp.txt` (isolated MCP deps; see Dependency Strategy)
+- Modify: `.gitignore` (add `backend-fastapi/venv-mcp/`)
 - Test: `backend-fastapi/tests/test_mcp_tools.py`
 
 **Interfaces:**
 - Produces: `_format_entity_list(entities: list[dict], name_key: str = "name", path_key: str = "module_path") -> str` and `_truncate_docstring(text: str, max_chars: int = 500) -> str` in `app.mcp.tools`, plus module-level constant `DOCSTRING_MAX_CHARS = 500`. Tasks 3-4 add the six tools to this same module.
 
-- [ ] **Step 1: Install the dependency into the venv**
+- [ ] **Step 1: Create the isolated MCP requirements file**
 
-Run:
+Create `backend-fastapi/requirements-mcp.txt`:
+```
+# MCP server dependencies - isolated from the FastAPI web stack.
+#
+# The code-graph service layer imports neither FastAPI nor Starlette, so this
+# environment installs the latest mcp SDK (which requires pydantic>=2.11)
+# without conflicting with the app's pinned fastapi==0.115 / pydantic==2.9.2.
+# Install into a dedicated venv:  python -m venv venv-mcp
+#                                 venv-mcp/Scripts/pip install -r requirements-mcp.txt
+mcp>=1.12
+neo4j>=5.15.0
+chromadb>=0.4.22
+sentence-transformers>=2.2.0
+tenacity>=8.2.0
+tiktoken>=0.5.0
+pydantic-settings>=2.5.2
+python-dotenv>=1.0.1
+```
+
+- [ ] **Step 2: Create venv-mcp, install, and gitignore it**
+
+Run (from `backend-fastapi/`):
 ```bash
-./venv312/Scripts/python.exe -m pip install "mcp>=1.9.0"
+py -3.12 -m venv venv-mcp
+./venv-mcp/Scripts/python.exe -m pip install -r requirements-mcp.txt
 ```
-Expected: installs `mcp` (latest, currently 1.28.x) and its deps.
-
-- [ ] **Step 2: Add `mcp` to both requirements files**
-
-Append this line to `backend-fastapi/requirements.txt` and to `backend-fastapi/requirements-ci.txt`:
+Add `backend-fastapi/venv-mcp/` to `.gitignore` (next to the existing
+`backend-fastapi/venv312/` line). Verify the environment:
+```bash
+./venv-mcp/Scripts/python.exe -c "import app.services.code_graph.retriever; from mcp.server.fastmcp import FastMCP; import inspect; print('lifespan' in inspect.signature(FastMCP.__init__).parameters)"
 ```
-mcp>=1.9.0
-```
+Expected: `True` (service layer + mcp import cleanly; lifespan kwarg present).
 
 - [ ] **Step 3: Create the package marker**
 
@@ -174,8 +213,8 @@ Expected: `All checks passed!`
 - [ ] **Step 9: Commit**
 
 ```bash
-git add app/mcp/__init__.py app/mcp/tools.py tests/test_mcp_tools.py requirements.txt requirements-ci.txt
-git commit -m "chore(mcp): add mcp dependency and app/mcp package with formatting helpers"
+git add app/mcp/__init__.py app/mcp/tools.py tests/test_mcp_tools.py requirements-mcp.txt ../.gitignore
+git commit -m "chore(mcp): add isolated mcp deps and app/mcp package with formatting helpers"
 ```
 
 ---
@@ -766,11 +805,13 @@ async def test_all_six_tools_registered():
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run:
+This test imports `mcp`, so it runs under venv-mcp:
 ```bash
-./venv312/Scripts/python.exe -m pytest tests/test_mcp_server.py -q --no-cov
+./venv-mcp/Scripts/python.exe -m pytest tests/test_mcp_server.py -q --no-cov
 ```
 Expected: FAIL with `ModuleNotFoundError: No module named 'app.mcp.server'`.
+First install the test runner into venv-mcp (one-time):
+`./venv-mcp/Scripts/python.exe -m pip install "pytest==8.3.3" "pytest-asyncio==0.24.0"`.
 
 - [ ] **Step 3: Implement the server**
 
@@ -831,9 +872,9 @@ if __name__ == "__main__":
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run:
+Run (venv-mcp, since it imports `mcp`):
 ```bash
-./venv312/Scripts/python.exe -m pytest tests/test_mcp_server.py -q --no-cov
+./venv-mcp/Scripts/python.exe -m pytest tests/test_mcp_server.py -q --no-cov
 ```
 Expected: PASS (1 passed).
 
@@ -845,9 +886,9 @@ exits by itself when stdin reaches EOF, so this command terminates on its own
 step if running fully headless; the registration test plus stderr-only
 logging already cover the guarantee structurally.
 
-Run (from `backend-fastapi/`):
+Run (from `backend-fastapi/`, venv-mcp):
 ```bash
-echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}' | ./venv312/Scripts/python.exe -m app.mcp.server
+echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}' | ./venv-mcp/Scripts/python.exe -m app.mcp.server
 ```
 Expected: exactly one JSON-RPC response line on stdout containing `"serverInfo"`
 with `"name":"code-graph"`; any log lines appear on stderr only; the process
@@ -877,13 +918,20 @@ ChromaDB services as the backend.
 | `explain_symbol` | Signature, docstring, and graph neighbors of a symbol |
 
 **Prerequisites:** the Docker infrastructure services running (see Getting
-Started) and the corpus indexed. Start from the `backend-fastapi/` directory.
+Started) and the corpus indexed. The server runs in its own virtualenv
+(isolated from the web stack, which pins an older pydantic):
+
+```bash
+cd backend-fastapi
+python -m venv venv-mcp
+venv-mcp/Scripts/pip install -r requirements-mcp.txt
+```
 
 **Claude Code**
 
 ```bash
 cd backend-fastapi
-claude mcp add code-graph -- ./venv312/Scripts/python.exe -m app.mcp.server
+claude mcp add code-graph -- ./venv-mcp/Scripts/python.exe -m app.mcp.server
 ```
 
 **Claude Desktop** — add to `claude_desktop_config.json`:
@@ -892,7 +940,7 @@ claude mcp add code-graph -- ./venv312/Scripts/python.exe -m app.mcp.server
 {
   "mcpServers": {
     "code-graph": {
-      "command": "D:\\codeproject\\Smart_Code_Assistant\\backend-fastapi\\venv312\\Scripts\\python.exe",
+      "command": "D:\\codeproject\\Smart_Code_Assistant\\backend-fastapi\\venv-mcp\\Scripts\\python.exe",
       "args": ["-m", "app.mcp.server"],
       "cwd": "D:\\codeproject\\Smart_Code_Assistant\\backend-fastapi"
     }
@@ -903,12 +951,15 @@ claude mcp add code-graph -- ./venv312/Scripts/python.exe -m app.mcp.server
 
 - [ ] **Step 7: Full suite + lint**
 
-Run:
+The app suite + tool/helper tests run in venv312 (they never import `mcp`);
+the server registration test runs in venv-mcp:
 ```bash
-./venv312/Scripts/python.exe -m pytest -q --no-cov
+./venv312/Scripts/python.exe -m pytest -q --no-cov --ignore=tests/test_mcp_server.py
+./venv-mcp/Scripts/python.exe -m pytest tests/test_mcp_server.py -q --no-cov
 ./venv312/Scripts/python.exe -m ruff check app/mcp/ tests/test_mcp_tools.py tests/test_mcp_server.py tests/test_neo4j_get_entity.py
 ```
-Expected: all tests pass (existing 361 + 23 new = 384), `All checks passed!`.
+Expected: venv312 run passes (existing 361 + 22 new = 383); venv-mcp run passes
+(1); `All checks passed!`.
 
 - [ ] **Step 8: Commit**
 
