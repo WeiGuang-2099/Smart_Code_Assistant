@@ -1,0 +1,15 @@
+# MCP server dependencies - isolated from the FastAPI web stack.
+#
+# The code-graph service layer imports neither FastAPI nor Starlette, so this
+# environment installs the latest mcp SDK (which requires pydantic>=2.11)
+# without conflicting with the app's pinned fastapi==0.115 / pydantic==2.9.2.
+# Install into a dedicated venv:  python -m venv venv-mcp
+#                                 venv-mcp/Scripts/pip install -r requirements-mcp.txt
+mcp>=1.12
+neo4j>=5.15.0
+chromadb>=0.4.22
+sentence-transformers>=2.2.0
+tenacity>=8.2.0
+tiktoken>=0.5.0
+pydantic-settings>=2.5.2
+python-dotenv>=1.0.1
