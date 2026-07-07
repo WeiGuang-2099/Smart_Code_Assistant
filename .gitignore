@@ -114,3 +114,4 @@ temp/
 evals/results/*.json
 evals/golden_set/*.draft.jsonl
 backend-fastapi/venv312/
+backend-fastapi/venv-mcp/

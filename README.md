@@ -8,6 +8,22 @@
 
 An AI-powered code generation, review, and analysis platform built with FastAPI, React, and LangChain. Combines LLM-driven code intelligence with a code knowledge graph (GraphRAG) for deep structural understanding of your codebase.
 
+## Screenshots
+
+A visual tour of the platform (dark, cyberpunk-themed UI):
+
+| Home dashboard | AI code generation |
+|:---:|:---:|
+| ![Home dashboard](docs/screenshots/02-dashboard.png) | ![AI code generation](docs/screenshots/03-generate.png) |
+| **Code editor (Monaco)** | **Code analysis + GraphRAG** |
+| ![Code editor](docs/screenshots/09-editor.png) | ![Code analysis](docs/screenshots/06-code-analysis.png) |
+| **Code review** | **AI agents ("digital humans")** |
+| ![Code review](docs/screenshots/04-review.png) | ![AI agents](docs/screenshots/05-agents.png) |
+| **Documents** | **Projects** |
+| ![Documents](docs/screenshots/07-documents.png) | ![Projects](docs/screenshots/08-projects.png) |
+| **Profile & settings** | **Login** |
+| ![Profile](docs/screenshots/10-profile.png) | ![Login](docs/screenshots/01-login.png) |
+
 ## Features
 
 ### AI Code Intelligence
@@ -283,6 +299,65 @@ A demo user is seeded on first startup:
 | Versions | `/api/v1/versions` | Document versioning |
 | Health | `/api/v1/health` | Service health check |
 | Metrics | `/metrics` | Prometheus metrics |
+
+## MCP Server
+
+The code-graph engine is also exposed as a [Model Context Protocol](https://modelcontextprotocol.io)
+server, so MCP clients such as Claude Code and Claude Desktop can query the
+indexed codebase directly. It runs over stdio and reuses the same Neo4j +
+ChromaDB services as the backend.
+
+**Tools**
+
+| Tool | Purpose |
+|---|---|
+| `search_codebase` | Hybrid semantic + graph search (GraphRAG) |
+| `find_callers` | Functions that call a given function |
+| `find_callees` | Functions a given function calls |
+| `impact_analysis` | Blast radius of changing a symbol |
+| `find_call_path` | Call paths between two functions |
+| `explain_symbol` | Signature, docstring, and graph neighbors of a symbol |
+| `list_projects` | Indexed project ids and their entity counts (discovery) |
+
+**Prerequisites:** the Docker infrastructure services running (see Getting
+Started) and the corpus indexed. The server runs in its own virtualenv
+(isolated from the web stack, which pins an older pydantic):
+
+```bash
+cd backend-fastapi
+python -m venv venv-mcp
+venv-mcp/Scripts/pip install -r requirements-mcp.txt
+```
+
+**Project id:** the semantic tools query the project set by
+`CODE_GRAPH_DEFAULT_PROJECT_ID` (default `1`). Point it at the id you indexed the
+corpus under; if `search_codebase` returns "No matches", call `list_projects` to
+see which ids actually hold vectors. On first start the server warms the local
+embedding model (~15s, downloads from HuggingFace once); set
+`CODE_GRAPH_EMBEDDING_OFFLINE=true` afterwards to load it from cache only and skip
+all HuggingFace network calls (which can otherwise stall startup when the Hub is
+slow).
+
+**Claude Code**
+
+```bash
+cd backend-fastapi
+claude mcp add code-graph -- ./venv-mcp/Scripts/python.exe -m app.mcp.server
+```
+
+**Claude Desktop** — add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "code-graph": {
+      "command": "D:\\codeproject\\Smart_Code_Assistant\\backend-fastapi\\venv-mcp\\Scripts\\python.exe",
+      "args": ["-m", "app.mcp.server"],
+      "cwd": "D:\\codeproject\\Smart_Code_Assistant\\backend-fastapi"
+    }
+  }
+}
+```
 
 ## Configuration
 

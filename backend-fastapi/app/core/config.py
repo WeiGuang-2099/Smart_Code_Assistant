@@ -112,6 +112,13 @@ class Settings(BaseSettings):
     CODE_GRAPH_OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     CODE_GRAPH_MAX_ENTITIES: int = 100               # 单次最大实体数
     CODE_GRAPH_ENABLE_SEMANTIC_SEARCH: bool = True   # 启用语义搜索
+    # Default project id for the MCP tools / semantic search. The corpus must be
+    # indexed under this id; use the list_projects MCP tool to discover valid ids.
+    CODE_GRAPH_DEFAULT_PROJECT_ID: int = 1
+    # Load the local embedding model from cache only (no HuggingFace Hub network).
+    # Set true once the model is cached to avoid per-startup HF requests that can
+    # stall the first search_codebase call for minutes when the Hub is slow.
+    CODE_GRAPH_EMBEDDING_OFFLINE: bool = False
 
     class Config:
         env_file = _ENV_FILE
