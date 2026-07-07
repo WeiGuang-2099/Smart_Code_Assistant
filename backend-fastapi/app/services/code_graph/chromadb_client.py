@@ -57,21 +57,62 @@ class ChromaDBClient:
             raise
 
     def _init_embedding_function(self) -> None:
-        """初始化嵌入函数"""
+        """初始化嵌入函数
+
+        Provider is selected via config.embedding_provider:
+        - "openai": hosted OpenAI-compatible embeddings (reuses LLM_API_KEY /
+          LLM_BASE_URL); model from config.openai_embedding_model.
+        - anything else (default): local SentenceTransformers model.
+
+        Any failure (missing key, model load error) downgrades to ChromaDB's
+        bundled DefaultEmbeddingFunction so the graph feature keeps working.
+
+        NOTE: different providers produce different vector dimensions, so
+        switching providers requires re-indexing existing project collections.
+        """
+        provider = (getattr(self.config, "embedding_provider", "") or "sentence_transformers").lower()
         try:
             _, _, embedding_functions = _import_chromadb()
 
-            # 使用 Sentence Transformers 本地模型
-            self._embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
-                model_name=self.config.embedding_model
-            )
-            logger.info(f"Initialized embedding model: {self.config.embedding_model}")
+            if provider == "openai":
+                self._embedding_function = self._build_openai_embedding_function(embedding_functions)
+                logger.info(
+                    f"Initialized OpenAI embedding model: "
+                    f"{getattr(self.config, 'openai_embedding_model', '')}"
+                )
+            else:
+                # 使用 Sentence Transformers 本地模型
+                self._embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
+                    model_name=self.config.embedding_model
+                )
+                logger.info(f"Initialized embedding model: {self.config.embedding_model}")
         except Exception as e:
-            logger.warning(f"Failed to load embedding model {self.config.embedding_model}: {e}")
+            logger.warning(f"Failed to initialize {provider} embedding function: {e}")
             # 降级使用默认模型
             _, _, embedding_functions = _import_chromadb()
             self._embedding_function = embedding_functions.DefaultEmbeddingFunction()
             logger.info("Using default embedding function")
+
+    def _build_openai_embedding_function(self, embedding_functions) -> Any:
+        """Build ChromaDB's OpenAIEmbeddingFunction from config.
+
+        Raises ValueError when no API key is configured so the caller downgrades
+        to the default embedding function (rather than failing silently).
+        """
+        api_key = getattr(self.config, "embedding_api_key", "") or ""
+        if not api_key:
+            raise ValueError(
+                "OpenAI embedding provider selected but no API key configured "
+                "(set LLM_API_KEY or ZHIPUAI_API_KEY)."
+            )
+        kwargs: Dict[str, Any] = {
+            "api_key": api_key,
+            "model_name": getattr(self.config, "openai_embedding_model", "text-embedding-3-small"),
+        }
+        base_url = getattr(self.config, "embedding_base_url", "") or ""
+        if base_url:
+            kwargs["api_base"] = base_url
+        return embedding_functions.OpenAIEmbeddingFunction(**kwargs)
 
     def close(self) -> None:
         """关闭连接"""

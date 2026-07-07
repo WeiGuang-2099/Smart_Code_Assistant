@@ -18,6 +18,33 @@ logger = logging.getLogger(__name__)
 RETRIEVAL_CACHE_TTL = 300
 GRAPH_SEED_COUNT = 5  # number of top semantic hits used to seed graph traversal
 
+# Seed-scoring priors. Eval evidence (spec 2026-07-07): for "how does X work"
+# questions the embedding model ranks schema/exception classes above the
+# entry-point function whose call/import neighbors answer the question, so
+# traversal seeds from the wrong nodes. Discount those node types for seed
+# ordering only -- semantic_results ordering is never touched.
+SEED_TYPE_WEIGHTS = {"function": 1.0, "class": 0.7}
+SEED_SCHEMA_PATH_PENALTY = 0.3   # Pydantic request/response models
+SEED_EXCEPTION_PENALTY = 0.4     # *Error / *Exception names, exceptions modules
+
+CONTEXT_SNIPPET_COUNT = 5        # indexed document snippets included in combined_context
+CONTEXT_SNIPPET_MAX_CHARS = 1500
+CONTEXT_TOTAL_MAX_CHARS = 8000   # hard cap on the snippet section
+
+
+def _score_seed(metadata: Dict[str, Any], relevance_score: float) -> float:
+    """Seed priority = semantic relevance discounted by how unlikely the
+    node type is to have useful call/import neighbors."""
+    score = relevance_score * SEED_TYPE_WEIGHTS.get(
+        metadata.get("type"), SEED_TYPE_WEIGHTS["class"])
+    module_path = (metadata.get("module_path") or "").replace("\\", "/")
+    name = metadata.get("name") or ""
+    if "app/schemas/" in module_path:
+        score *= SEED_SCHEMA_PATH_PENALTY
+    if name.endswith(("Error", "Exception")) or "exceptions" in module_path:
+        score *= SEED_EXCEPTION_PENALTY
+    return score
+
 
 class CodeGraphRetriever:
     """代码图谱混合检索器"""
@@ -113,8 +140,11 @@ class CodeGraphRetriever:
 
 
     def _seed_entities_from_semantic(self, semantic_results, n: int) -> list:
-        """Pick the top-n semantic hits (merged across collections, ranked by
-        relevance_score) and map each to a graph-node seed descriptor."""
+        """Pick the top-n graph-traversal seeds from all semantic hits.
+
+        Ordering uses _score_seed (relevance discounted by node-type priors);
+        the semantic_results payload itself is never reordered. Descriptors
+        keep the raw relevance_score (Neo4j ranking contract)."""
         chunks = []
         if isinstance(semantic_results, dict):
             for lst in semantic_results.values():
@@ -122,7 +152,11 @@ class CodeGraphRetriever:
                     chunks.extend(c for c in lst if isinstance(c, dict))
         elif isinstance(semantic_results, list):
             chunks = [c for c in semantic_results if isinstance(c, dict)]
-        chunks.sort(key=lambda c: c.get("relevance_score", 0), reverse=True)
+        chunks.sort(
+            key=lambda c: _score_seed(c.get("metadata") or {},
+                                      c.get("relevance_score", 0)),
+            reverse=True,
+        )
 
         seeds = []
         for c in chunks[:n]:
@@ -137,42 +171,62 @@ class CodeGraphRetriever:
         return seeds
 
     def _build_combined_context(self, result: Dict[str, Any]) -> str:
-        """构建组合上下文字符串"""
-        context_parts = []
+        """Build the generation context: top-hit indexed document text
+        (signature + docstring), then graph relations. Eval evidence (spec
+        2026-07-07): names alone made the generator refuse "how does X work"
+        questions; the document field the retrieval layer already returns is
+        what answers them."""
+        parts = []
 
-        # 添加语义搜索结果
-        semantic = result.get("semantic_results", {})
-        if semantic:
-            if semantic.get("functions"):
-                context_parts.append("相关函数:")
-                for func in semantic["functions"][:5]:
-                    metadata = func.get("metadata", {})
-                    context_parts.append(
-                        f"  - {metadata.get('name', 'unknown')} "
-                        f"({metadata.get('module_path', '')})"
-                    )
+        semantic = result.get("semantic_results") or {}
+        chunks = []
+        if isinstance(semantic, dict):
+            for lst in semantic.values():
+                if isinstance(lst, list):
+                    chunks.extend(c for c in lst if isinstance(c, dict))
+        chunks.sort(key=lambda c: c.get("relevance_score", 0), reverse=True)
 
-            if semantic.get("classes"):
-                context_parts.append("相关类:")
-                for cls in semantic["classes"][:5]:
-                    metadata = cls.get("metadata", {})
-                    context_parts.append(
-                        f"  - {metadata.get('name', 'unknown')} "
-                        f"({metadata.get('module_path', '')})"
-                    )
+        seen = set()
+        total = 0
+        for chunk in chunks:
+            if len(seen) >= CONTEXT_SNIPPET_COUNT:
+                break
+            md = chunk.get("metadata") or {}
+            name = md.get("name")
+            key = (name, md.get("module_path"))
+            if not name or key in seen:
+                continue
+            header = f"### {name} ({md.get('module_path') or ''})"
+            doc = (chunk.get("document") or "").strip()
+            if doc:
+                budget = min(CONTEXT_SNIPPET_MAX_CHARS,
+                             CONTEXT_TOTAL_MAX_CHARS - total)
+                if budget <= 0:
+                    break
+                snippet = doc[:budget]
+                if len(doc) > budget:
+                    snippet += "\n... [truncated]"
+                block = f"{header}\n```\n{snippet}\n```"
+            else:
+                block = header
+            parts.append(block)
+            seen.add(key)
+            total += len(block)
+            if total >= CONTEXT_TOTAL_MAX_CHARS:
+                break
 
-        # 添加图上下文
         graph_ctx = result.get("graph_context")
         if graph_ctx:
-            context_parts.append("图谱关系:")
+            lines = ["图谱关系:"]
             for ctx in graph_ctx[:10]:
                 relation = ctx.get("relation", "related")
                 module_path = ctx.get("module_path") or ""
-                context_parts.append(
+                lines.append(
                     f"  - {ctx.get('name')} [{relation}] ({module_path})"
                 )
+            parts.append("\n".join(lines))
 
-        return "\n".join(context_parts) if context_parts else ""
+        return "\n\n".join(parts) if parts else ""
 
     async def get_dependencies(
         self,
