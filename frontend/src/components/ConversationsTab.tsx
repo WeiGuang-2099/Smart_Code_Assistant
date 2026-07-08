@@ -13,8 +13,8 @@ export default function ConversationsTab({ token }: ConversationsTabProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
 
-  // Load conversation list - since the API fetches by agent_id, aggregate across agents.
-  // A real project might need a dedicated API endpoint to fetch all of a user's conversations.
+  // Load conversation list - since the API fetches by agent_id, mock data is used here
+  // A real project may need a new API endpoint to fetch all user conversations
   const loadConversations = useCallback(async () => {
     setLoading(true)
     setError('')
@@ -24,13 +24,13 @@ export default function ConversationsTab({ token }: ConversationsTabProps) {
       const agentsResponse = await agentService.getAgents(token)
       const allConversations: Conversation[] = []
 
-      // Fetch conversations for each agent
+      // Fetch each agent's conversations
       for (const agent of agentsResponse.items) {
         try {
           const convResponse = await agentService.getAgentConversations(token, agent.id)
           allConversations.push(...convResponse.items)
         } catch {
-          // Ignore errors from individual agents
+          // Ignore errors for individual agents
         }
       }
 
@@ -57,7 +57,7 @@ export default function ConversationsTab({ token }: ConversationsTabProps) {
       setConversations((prev) => prev.filter((c) => c.id !== conversationId))
       setDeleteConfirm(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete')
+      setError(err instanceof Error ? err.message : 'Delete failed')
     }
   }
 

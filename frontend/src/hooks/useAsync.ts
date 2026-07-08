@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { apiFetch } from '../lib/apiClient'
 
 interface UseAsyncState<T> {
   data: T | null
@@ -172,14 +173,8 @@ export function useFetch<T>(
   const { refreshInterval, refreshOnFocus = false, ...asyncOptions } = options
 
   const fetchFunction = useCallback(async () => {
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-    const token = localStorage.getItem('access_token')
-
-    const response = await fetch(`${API_URL}${url}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+    const response = await apiFetch(url, {
+      headers: { 'Content-Type': 'application/json' },
     })
 
     if (!response.ok) {

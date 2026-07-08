@@ -10,7 +10,7 @@ interface AgentEditDialogProps {
   onComplete: () => void
 }
 
-// Available domain options
+// Available domains
 const DOMAIN_OPTIONS = [
   { value: 'code', label: 'Code Development', icon: '💻' },
   { value: 'writing', label: 'Content Writing', icon: '✍️' },

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { apiFetch } from '../lib/apiClient'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import CodeEditor from '../components/Editor'
@@ -85,10 +86,9 @@ export default function EditorPage() {
 
     setLoading(true)
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
       // Load project details
-      const projectResp = await fetch(`${API_URL}/api/v1/projects/${projId}`, {
+      const projectResp = await apiFetch(`/api/v1/projects/${projId}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (projectResp.ok) {
@@ -97,7 +97,7 @@ export default function EditorPage() {
       }
 
       // Load files
-      const filesResp = await fetch(`${API_URL}/api/v1/code-files?project_id=${projId}`, {
+      const filesResp = await apiFetch(`/api/v1/code-files?project_id=${projId}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (filesResp.ok) {
@@ -123,8 +123,7 @@ export default function EditorPage() {
     if (!isAuthenticated || !token) return
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-      const resp = await fetch(`${API_URL}/api/v1/code-files/${id}`, {
+      const resp = await apiFetch(`/api/v1/code-files/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
 
@@ -154,11 +153,10 @@ export default function EditorPage() {
 
     setSaving(true)
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
       if (fileId) {
         // Update existing file
-        const resp = await fetch(`${API_URL}/api/v1/code-files/${fileId}`, {
+        const resp = await apiFetch(`/api/v1/code-files/${fileId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -174,7 +172,7 @@ export default function EditorPage() {
         }
       } else {
         // Create new file
-        const resp = await fetch(`${API_URL}/api/v1/code-files`, {
+        const resp = await apiFetch(`/api/v1/code-files`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -222,8 +220,7 @@ export default function EditorPage() {
     const detectedLang = LANGUAGE_MAP[ext] || 'javascript'
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-      const resp = await fetch(`${API_URL}/api/v1/code-files`, {
+      const resp = await apiFetch(`/api/v1/code-files`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

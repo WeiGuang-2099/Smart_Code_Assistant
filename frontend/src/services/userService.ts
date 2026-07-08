@@ -12,8 +12,8 @@ import type {
   FullUserProfile,
   AvatarUploadResponse,
 } from '../types/user'
+import { apiFetch } from '../lib/apiClient'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 /**
  * Get authorization headers with token
@@ -42,7 +42,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
  * Get current user's profile
  */
 export async function getUserProfile(token: string): Promise<UserProfileDetail> {
-  const response = await fetch(`${API_URL}/api/v1/user/profile`, {
+  const response = await apiFetch(`/api/v1/user/profile`, {
     headers: { Authorization: `Bearer ${token}` },
   })
 
@@ -56,7 +56,7 @@ export async function updateUserProfile(
   token: string,
   data: UserProfileUpdate
 ): Promise<UserProfile> {
-  const response = await fetch(`${API_URL}/api/v1/user/profile`, {
+  const response = await apiFetch(`/api/v1/user/profile`, {
     method: 'PUT',
     headers: getAuthHeaders(token),
     body: JSON.stringify(data),
@@ -75,7 +75,7 @@ export async function uploadAvatar(
   const formData = new FormData()
   formData.append('file', file)
 
-  const response = await fetch(`${API_URL}/api/v1/user/profile/avatar`, {
+  const response = await apiFetch(`/api/v1/user/profile/avatar`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -92,7 +92,7 @@ export async function uploadAvatar(
  * Get current user's preferences
  */
 export async function getUserPreferences(token: string): Promise<UserPreference> {
-  const response = await fetch(`${API_URL}/api/v1/user/preferences`, {
+  const response = await apiFetch(`/api/v1/user/preferences`, {
     headers: { Authorization: `Bearer ${token}` },
   })
 
@@ -106,7 +106,7 @@ export async function updateUserPreferences(
   token: string,
   data: UserPreferenceUpdate
 ): Promise<UserPreference> {
-  const response = await fetch(`${API_URL}/api/v1/user/preferences`, {
+  const response = await apiFetch(`/api/v1/user/preferences`, {
     method: 'PUT',
     headers: getAuthHeaders(token),
     body: JSON.stringify(data),
@@ -121,7 +121,7 @@ export async function updateUserPreferences(
  * Get current user's statistics
  */
 export async function getUserStats(token: string): Promise<UserStats> {
-  const response = await fetch(`${API_URL}/api/v1/user/stats`, {
+  const response = await apiFetch(`/api/v1/user/stats`, {
     headers: { Authorization: `Bearer ${token}` },
   })
 
@@ -132,7 +132,7 @@ export async function getUserStats(token: string): Promise<UserStats> {
  * Get current user's enhanced statistics (including agent data)
  */
 export async function getEnhancedUserStats(token: string): Promise<EnhancedUserStats> {
-  const response = await fetch(`${API_URL}/api/v1/user/stats/enhanced`, {
+  const response = await apiFetch(`/api/v1/user/stats/enhanced`, {
     headers: { Authorization: `Bearer ${token}` },
   })
 
@@ -145,7 +145,7 @@ export async function getEnhancedUserStats(token: string): Promise<EnhancedUserS
  * Get complete user profile (profile + preferences + stats)
  */
 export async function getFullUserProfile(token: string): Promise<FullUserProfile> {
-  const response = await fetch(`${API_URL}/api/v1/user/me`, {
+  const response = await apiFetch(`/api/v1/user/me`, {
     headers: { Authorization: `Bearer ${token}` },
   })
 

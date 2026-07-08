@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
+import { apiFetch } from '../lib/apiClient'
 import type { OutlineItem } from '../types/document'
 
 interface DocumentOutlineProps {
   documentId: number
-  content?: string // Optional: extract directly from Markdown content
+  content?: string // optional: extract directly from Markdown content
   onNavigate?: (lineNumber: number) => void
 }
 
@@ -26,7 +27,7 @@ export default function DocumentOutline({
       if (match) {
         const level = match[1].length
         const text = match[2].trim()
-        // Generate anchor
+        // generate anchor
         const anchor = text
           .toLowerCase()
           .replace(/[^\w\u4e00-\u9fff]+/g, '-')
@@ -55,7 +56,7 @@ export default function DocumentOutline({
     const stack: OutlineItem[] = [root]
 
     for (const heading of headings) {
-      // Find the parent (last heading with a lower level than current)
+      // Find parent (last heading with a lower level than current)
       while (stack[stack.length - 1].level >= heading.level) {
         stack.pop()
       }
@@ -77,13 +78,7 @@ export default function DocumentOutline({
       // Fetch from API
       const fetchOutline = async () => {
         try {
-          const token = localStorage.getItem('token')
-          const response = await fetch(
-            `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/documents/${documentId}/outline`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            }
-          )
+          const response = await apiFetch(`/api/v1/documents/${documentId}/outline`)
 
           if (response.ok) {
             const data = await response.json()

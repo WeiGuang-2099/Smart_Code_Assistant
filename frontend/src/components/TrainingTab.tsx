@@ -44,13 +44,13 @@ export default function TrainingTab({ token }: TrainingTabProps) {
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-lg font-semibold text-cyan-300">Training Tasks</h3>
-          <p className="text-sm text-gray-500">Manage your agent's training tasks</p>
+          <p className="text-sm text-gray-500">Manage agent training tasks</p>
         </div>
         <button
           className="cyber-btn px-4 py-2 text-sm"
           style={{ borderColor: 'var(--color-neon-green)', color: 'var(--color-neon-green)' }}
         >
-          + New Training
+          + New Task
         </button>
       </div>
 

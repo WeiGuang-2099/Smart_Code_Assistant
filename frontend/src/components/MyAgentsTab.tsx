@@ -52,7 +52,7 @@ export default function MyAgentsTab({ token }: MyAgentsTabProps) {
       setAgents((prev) => prev.filter((a) => a.id !== agentId))
       setDeleteConfirm(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete')
+      setError(err instanceof Error ? err.message : 'Delete failed')
     }
   }
 
@@ -71,7 +71,7 @@ export default function MyAgentsTab({ token }: MyAgentsTabProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header: search and create button */}
+      {/* Header: search and create buttons */}
       <div className="flex gap-4">
         <div className="flex-1 relative">
           <input

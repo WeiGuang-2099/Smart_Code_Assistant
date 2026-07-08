@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { apiFetch } from '../lib/apiClient'
 import { useAuth } from '../contexts/AuthContext'
 import CodeEditor from '../components/Editor'
 
@@ -54,8 +55,7 @@ export default function CodeGenPage() {
     setExplanation('')
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-      const response = await fetch(`${API_URL}/api/v1/ai/generate`, {
+      const response = await apiFetch(`/api/v1/ai/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -94,8 +94,7 @@ export default function CodeGenPage() {
     setReviewResult(null)
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-      const response = await fetch(`${API_URL}/api/v1/ai/review`, {
+      const response = await apiFetch(`/api/v1/ai/review`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -135,8 +134,7 @@ export default function CodeGenPage() {
     setLoading(true)
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-      const response = await fetch(`${API_URL}/api/v1/ai/chat`, {
+      const response = await apiFetch(`/api/v1/ai/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

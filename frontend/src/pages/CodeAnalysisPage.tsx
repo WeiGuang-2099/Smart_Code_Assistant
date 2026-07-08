@@ -3,7 +3,6 @@ import { useAuth } from '../contexts/AuthContext'
 import CodeGraph from '../components/CodeGraph'
 import type { GraphNode, GraphEdge } from '../components/CodeGraph'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 type GraphQueryType = 'search' | 'dependencies' | 'impact' | 'paths'
 
@@ -70,7 +69,7 @@ export default function CodeAnalysisPage() {
     setError('')
 
     try {
-      const response = await fetch(`${API_URL}/api/v1/code-analysis/analyze`, {
+      const response = await apiFetch(`/api/v1/code-analysis/analyze`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -103,7 +102,7 @@ export default function CodeAnalysisPage() {
     setFullAnalysis(null)
 
     try {
-      const response = await fetch(`${API_URL}/api/v1/code-analysis/full-analysis`, {
+      const response = await apiFetch(`/api/v1/code-analysis/full-analysis`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -142,7 +141,7 @@ export default function CodeAnalysisPage() {
     setGraphResult('')
 
     try {
-      const response = await fetch(`${API_URL}/api/v1/code-analysis/graph/query`, {
+      const response = await apiFetch(`/api/v1/code-analysis/graph/query`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -172,7 +171,7 @@ export default function CodeAnalysisPage() {
     setGraphVizLoading(true)
 
     try {
-      const response = await fetch(`${API_URL}/api/v1/code-graph/visualize?limit=100`, {
+      const response = await apiFetch(`/api/v1/code-graph/visualize?limit=100`, {
         headers: { Authorization: `Bearer ${token}` },
       })
 

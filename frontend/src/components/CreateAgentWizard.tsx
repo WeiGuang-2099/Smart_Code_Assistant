@@ -11,7 +11,7 @@ interface CreateAgentWizardProps {
 
 type WizardStep = 'basic' | 'purpose' | 'confirm'
 
-// Available domain options
+// Available domains
 const DOMAIN_OPTIONS = [
   { value: 'code', label: 'Code Development', icon: '💻' },
   { value: 'writing', label: 'Content Writing', icon: '✍️' },
@@ -92,7 +92,7 @@ export default function CreateAgentWizard({
       setFormData({ name: '', domain: '', description: '', system_prompt: '' })
       setCurrentStep('basic')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create')
+      setError(err instanceof Error ? err.message : 'Creation failed')
     } finally {
       setCreating(false)
     }
@@ -196,7 +196,7 @@ export default function CreateAgentWizard({
 
         {/* Step content */}
         <div className="min-h-[200px]">
-          {/* Step 1: Basic info */}
+          {/* Step 1: Basic Info */}
           {currentStep === 'basic' && (
             <div className="space-y-4">
               <div>
@@ -241,7 +241,7 @@ export default function CreateAgentWizard({
                 </div>
               </div>
 
-              {/* AI name suggestions */}
+              {/* AI Name Suggestions */}
               <div className="pt-2">
                 <button
                   type="button"
@@ -319,7 +319,7 @@ export default function CreateAgentWizard({
                   className="w-full px-4 py-3 bg-gray-900/50 border border-purple-500/30 rounded
                              text-gray-100 placeholder-gray-500 focus:border-purple-500
                              focus:ring-2 focus:ring-purple-500/20 transition-all resize-none"
-                  placeholder="Describe this agent's purpose and characteristics..."
+                  placeholder="Describe what this agent does and its characteristics..."
                   rows={4}
                 />
               </div>
@@ -338,7 +338,7 @@ export default function CreateAgentWizard({
                   rows={4}
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Define the agent's behavior and role
+                  Define the agent's behavior and persona
                 </p>
               </div>
             </div>

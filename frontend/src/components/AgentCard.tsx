@@ -75,7 +75,7 @@ function AgentCard({ agent, onChat, onEdit, onDelete }: AgentCardProps) {
           {agent.description || 'No description'}
         </p>
 
-        {/* Stats */}
+        {/* Statistics */}
         <div className="flex items-center gap-4 mb-4 text-xs text-gray-500">
           <span className="flex items-center gap-1">
             <span className="text-cyan-400">💬</span>
@@ -134,5 +134,5 @@ function AgentCard({ agent, onChat, onEdit, onDelete }: AgentCardProps) {
   )
 }
 
-// Optimize performance with memo
+// Use memo to optimize performance
 export default memo(AgentCard)

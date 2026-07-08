@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { apiFetch } from '../lib/apiClient'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -42,8 +43,7 @@ export default function ProjectsPage() {
     setError('')
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-      const response = await fetch(`${API_URL}/api/v1/projects?page=${pageNum}&page_size=20`, {
+      const response = await apiFetch(`/api/v1/projects?page=${pageNum}&page_size=20`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -76,8 +76,7 @@ export default function ProjectsPage() {
     setError('')
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-      const response = await fetch(`${API_URL}/api/v1/projects`, {
+      const response = await apiFetch(`/api/v1/projects`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -17,8 +17,8 @@ import type {
   PDFUploadResponse,
   TipTapContent,
 } from '../types/document'
+import { apiFetch } from '../lib/apiClient'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 /**
  * Get authorization headers with token
@@ -59,8 +59,8 @@ export async function getDocuments(
   if (params.sort_by) queryParams.append('sort_by', params.sort_by)
   if (params.sort_order) queryParams.append('sort_order', params.sort_order)
 
-  const response = await fetch(
-    `${API_URL}/api/v1/documents?${queryParams.toString()}`,
+  const response = await apiFetch(
+    `/api/v1/documents?${queryParams.toString()}`,
     {
       headers: { Authorization: `Bearer ${token}` },
     }
@@ -73,7 +73,7 @@ export async function getDocuments(
  * Get a single document by ID
  */
 export async function getDocument(token: string, documentId: number): Promise<DocumentDetail> {
-  const response = await fetch(`${API_URL}/api/v1/documents/${documentId}`, {
+  const response = await apiFetch(`/api/v1/documents/${documentId}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
 
@@ -87,7 +87,7 @@ export async function createDocument(
   token: string,
   data: DocumentCreate
 ): Promise<Document> {
-  const response = await fetch(`${API_URL}/api/v1/documents`, {
+  const response = await apiFetch(`/api/v1/documents`, {
     method: 'POST',
     headers: getAuthHeaders(token),
     body: JSON.stringify(data),
@@ -104,7 +104,7 @@ export async function updateDocumentMetadata(
   documentId: number,
   data: DocumentUpdate
 ): Promise<Document> {
-  const response = await fetch(`${API_URL}/api/v1/documents/${documentId}/metadata`, {
+  const response = await apiFetch(`/api/v1/documents/${documentId}/metadata`, {
     method: 'PATCH',
     headers: getAuthHeaders(token),
     body: JSON.stringify(data),
@@ -121,7 +121,7 @@ export async function updateDocumentContent(
   documentId: number,
   data: VersionCreate
 ): Promise<Version> {
-  const response = await fetch(`${API_URL}/api/v1/documents/${documentId}`, {
+  const response = await apiFetch(`/api/v1/documents/${documentId}`, {
     method: 'PUT',
     headers: getAuthHeaders(token),
     body: JSON.stringify(data),
@@ -134,7 +134,7 @@ export async function updateDocumentContent(
  * Delete a document
  */
 export async function deleteDocument(token: string, documentId: number): Promise<void> {
-  const response = await fetch(`${API_URL}/api/v1/documents/${documentId}`, {
+  const response = await apiFetch(`/api/v1/documents/${documentId}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   })
@@ -154,8 +154,8 @@ export async function getVersions(
   token: string,
   documentId: number
 ): Promise<VersionListItem[]> {
-  const response = await fetch(
-    `${API_URL}/api/v1/documents/${documentId}/versions`,
+  const response = await apiFetch(
+    `/api/v1/documents/${documentId}/versions`,
     {
       headers: { Authorization: `Bearer ${token}` },
     }
@@ -172,8 +172,8 @@ export async function getVersion(
   documentId: number,
   versionId: number
 ): Promise<Version> {
-  const response = await fetch(
-    `${API_URL}/api/v1/documents/${documentId}/versions/${versionId}`,
+  const response = await apiFetch(
+    `/api/v1/documents/${documentId}/versions/${versionId}`,
     {
       headers: { Authorization: `Bearer ${token}` },
     }
@@ -196,8 +196,8 @@ export async function compareVersions(
     to_version: toVersion.toString(),
   })
 
-  const response = await fetch(
-    `${API_URL}/api/v1/documents/${documentId}/versions/compare?${queryParams.toString()}`,
+  const response = await apiFetch(
+    `/api/v1/documents/${documentId}/versions/compare?${queryParams.toString()}`,
     {
       headers: { Authorization: `Bearer ${token}` },
     }
@@ -214,8 +214,8 @@ export async function rollbackVersion(
   documentId: number,
   data: VersionRollbackRequest
 ): Promise<VersionRollbackResponse> {
-  const response = await fetch(
-    `${API_URL}/api/v1/documents/${documentId}/rollback`,
+  const response = await apiFetch(
+    `/api/v1/documents/${documentId}/rollback`,
     {
       method: 'POST',
       headers: getAuthHeaders(token),
@@ -246,7 +246,7 @@ export async function uploadPDF(
   if (metadata?.description) formData.append('description', metadata.description)
   if (metadata?.category) formData.append('category', metadata.category)
 
-  const response = await fetch(`${API_URL}/api/v1/documents/parse/parse-pdf`, {
+  const response = await apiFetch(`/api/v1/documents/parse/parse-pdf`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -264,7 +264,7 @@ export async function convertToTipTap(
   token: string,
   markdown: string
 ): Promise<{ tiptap: TipTapContent }> {
-  const response = await fetch(`${API_URL}/api/v1/documents/parse/convert-to-tiptap`, {
+  const response = await apiFetch(`/api/v1/documents/parse/convert-to-tiptap`, {
     method: 'POST',
     headers: getAuthHeaders(token),
     body: JSON.stringify({ markdown }),
@@ -280,7 +280,7 @@ export async function convertToMarkdown(
   token: string,
   tiptapJson: TipTapContent
 ): Promise<{ markdown: string }> {
-  const response = await fetch(`${API_URL}/api/v1/documents/parse/convert-to-markdown`, {
+  const response = await apiFetch(`/api/v1/documents/parse/convert-to-markdown`, {
     method: 'POST',
     headers: getAuthHeaders(token),
     body: JSON.stringify(tiptapJson),
@@ -293,7 +293,7 @@ export async function convertToMarkdown(
  * Get PDF parsing service status
  */
 export async function getParseStatus(token: string): Promise<Record<string, unknown>> {
-  const response = await fetch(`${API_URL}/api/v1/documents/parse/parse-status`, {
+  const response = await apiFetch(`/api/v1/documents/parse/parse-status`, {
     headers: { Authorization: `Bearer ${token}` },
   })
 

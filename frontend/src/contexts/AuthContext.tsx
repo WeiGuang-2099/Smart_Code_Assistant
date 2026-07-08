@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import type { ReactNode } from 'react'
+import { AUTH_LOGOUT, AUTH_TOKENS_UPDATED } from '../lib/apiClient'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -148,6 +149,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     validateToken()
   }, [validateToken])
+
+  // Sync React state with the central apiClient, which rotates/clears tokens in
+  // localStorage during background 401 refresh-and-retry.
+  useEffect(() => {
+    const handleTokensUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<{ access_token: string; refresh_token: string }>).detail
+      if (detail?.access_token) {
+        setToken(detail.access_token)
+        setRefreshToken(detail.refresh_token)
+      }
+    }
+
+    const handleLogout = () => {
+      setToken(null)
+      setRefreshToken(null)
+      setUser(null)
+      clearAuthData()
+    }
+
+    window.addEventListener(AUTH_TOKENS_UPDATED, handleTokensUpdated)
+    window.addEventListener(AUTH_LOGOUT, handleLogout)
+    return () => {
+      window.removeEventListener(AUTH_TOKENS_UPDATED, handleTokensUpdated)
+      window.removeEventListener(AUTH_LOGOUT, handleLogout)
+    }
+  }, [])
 
   // Login function
   const login = (accessToken: string, newRefreshToken: string, newUser: User) => {

@@ -13,9 +13,9 @@
  * await streamChat(message, history, (chunk) => setResponse(prev => prev + chunk))
  */
 import { useState, useCallback, useRef } from 'react'
+import { apiFetch } from '../lib/apiClient'
 import { useAuth } from '../contexts/AuthContext'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 type StreamEventType = 'content' | 'error' | 'done' | 'heartbeat' | 'metadata' | 'tool_start' | 'tool_end'
 
@@ -159,7 +159,7 @@ export const useStreamChat = () => {
         }
 
         try {
-          const response = await fetch(`${API_URL}/api/v1/agent/chat/stream`, {
+          const response = await apiFetch(`/api/v1/agent/chat/stream`, {
             method: 'POST',
             headers,
             body: JSON.stringify({

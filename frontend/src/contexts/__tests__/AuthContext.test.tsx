@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { AuthProvider, useAuth } from '../AuthContext'
+import { AUTH_LOGOUT, AUTH_TOKENS_UPDATED } from '../../lib/apiClient'
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <AuthProvider>{children}</AuthProvider>
@@ -149,5 +150,44 @@ describe('refreshAccessToken', () => {
 
     const ok = await act(async () => await result.current.refreshAccessToken())
     expect(ok).toBe(false)
+  })
+})
+
+describe('apiClient event integration', () => {
+  it('clears the session when an auth:logout event fires', async () => {
+    const { result } = renderHook(() => useAuth(), { wrapper })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    act(() => {
+      result.current.login('a', 'r', sampleUser)
+    })
+    expect(result.current.isAuthenticated).toBe(true)
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent(AUTH_LOGOUT))
+    })
+
+    await waitFor(() => expect(result.current.isAuthenticated).toBe(false))
+    expect(result.current.token).toBeNull()
+    expect(result.current.user).toBeNull()
+  })
+
+  it('updates the access token when an auth:tokens-updated event fires', async () => {
+    const { result } = renderHook(() => useAuth(), { wrapper })
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    act(() => {
+      result.current.login('a', 'r', sampleUser)
+    })
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent(AUTH_TOKENS_UPDATED, {
+          detail: { access_token: 'rotated', refresh_token: 'rotated-r' },
+        })
+      )
+    })
+
+    await waitFor(() => expect(result.current.token).toBe('rotated'))
   })
 })

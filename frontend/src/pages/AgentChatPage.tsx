@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react'
+import { apiFetch } from '../lib/apiClient'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { agentService } from '../services/agentService'
@@ -7,7 +8,6 @@ import { StreamingText } from '../components/common/TypewriterText'
 import { DynamicVirtualList } from '../components/common/VirtualList'
 import type { AgentDetail, Message } from '../types/agent'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 interface ChatMessage {
   role: 'user' | 'assistant'
@@ -94,7 +94,7 @@ export default function AgentChatPage() {
         content: m.content,
       }))
 
-      const response = await fetch(`${API_URL}/api/v1/agent/chat`, {
+      const response = await apiFetch(`/api/v1/agent/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
