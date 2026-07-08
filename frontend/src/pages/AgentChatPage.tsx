@@ -67,7 +67,7 @@ export default function AgentChatPage() {
       setMessages([
         {
           role: 'assistant',
-          content: `你好！我是 **${data.name}**。\n\n${data.description || '我可以帮助你解决编程问题。有什么我可以帮你的吗？'}`,
+          content: `Hi! I'm **${data.name}**.\n\n${data.description || 'I can help you solve programming problems. What can I help you with?'}`,
         },
       ])
     } catch (err) {

@@ -3,7 +3,7 @@ import type { OutlineItem } from '../types/document'
 
 interface DocumentOutlineProps {
   documentId: number
-  content?: string // 可选：直接从 Markdown 内容提取
+  content?: string // Optional: extract directly from Markdown content
   onNavigate?: (lineNumber: number) => void
 }
 
@@ -16,7 +16,7 @@ export default function DocumentOutline({
   const [loading, setLoading] = useState(true)
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
 
-  // 从 Markdown 内容提取大纲
+  // Extract outline from Markdown content
   const extractOutlineFromContent = (markdown: string): OutlineItem[] => {
     const lines = markdown.split('\n')
     const headings: OutlineItem[] = []
@@ -26,7 +26,7 @@ export default function DocumentOutline({
       if (match) {
         const level = match[1].length
         const text = match[2].trim()
-        // 生成 anchor
+        // Generate anchor
         const anchor = text
           .toLowerCase()
           .replace(/[^\w\u4e00-\u9fff]+/g, '-')
@@ -43,11 +43,11 @@ export default function DocumentOutline({
       }
     })
 
-    // 构建树结构
+    // Build tree structure
     return buildOutlineTree(headings)
   }
 
-  // 构建大纲树结构
+  // Build outline tree structure
   const buildOutlineTree = (headings: OutlineItem[]): OutlineItem[] => {
     if (headings.length === 0) return []
 
@@ -55,7 +55,7 @@ export default function DocumentOutline({
     const stack: OutlineItem[] = [root]
 
     for (const heading of headings) {
-      // 找到父级（最后一个比当前级别低的标题）
+      // Find the parent (last heading with a lower level than current)
       while (stack[stack.length - 1].level >= heading.level) {
         stack.pop()
       }
@@ -69,12 +69,12 @@ export default function DocumentOutline({
 
   useEffect(() => {
     if (content) {
-      // 直接从内容提取
+      // Extract directly from content
       const extracted = extractOutlineFromContent(content)
       setOutline(extracted)
       setLoading(false)
     } else {
-      // 从 API 获取
+      // Fetch from API
       const fetchOutline = async () => {
         try {
           const token = localStorage.getItem('token')
@@ -137,7 +137,7 @@ export default function DocumentOutline({
           style={indentStyle}
           onClick={() => handleItemClick(item)}
         >
-          {/* 展开/折叠图标 */}
+          {/* Expand/collapse icon */}
           {hasChildren && (
             <span
               className={`text-xs text-gray-500 transition-transform ${
@@ -149,7 +149,7 @@ export default function DocumentOutline({
           )}
           {!hasChildren && <span className="w-3" />}
 
-          {/* 级别指示器 */}
+          {/* Level indicator */}
           <span
             className={`
               w-5 h-5 flex items-center justify-center rounded text-xs font-mono
@@ -162,11 +162,11 @@ export default function DocumentOutline({
             H{item.level}
           </span>
 
-          {/* 标题文本 */}
+          {/* Heading text */}
           <span className="flex-1 truncate text-gray-300">{item.text}</span>
         </div>
 
-        {/* 子项 */}
+        {/* Children */}
         {hasChildren && isExpanded && (
           <div>
             {item.children.map((child) => renderOutlineItem(child, depth + 1))}
