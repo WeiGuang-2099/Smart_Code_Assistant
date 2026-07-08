@@ -35,7 +35,7 @@ export default function TrainingTab({ token }: TrainingTabProps) {
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-'
-    return new Date(dateString).toLocaleString('zh-CN')
+    return new Date(dateString).toLocaleString('en-US')
   }
 
   return (
