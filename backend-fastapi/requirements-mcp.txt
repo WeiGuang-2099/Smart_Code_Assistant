@@ -7,7 +7,8 @@
 #                                 venv-mcp/Scripts/pip install -r requirements-mcp.txt
 mcp>=1.12
 neo4j>=5.15.0
-chromadb>=0.4.22
+# Pinned: client must match the chromadb/chroma server image tag in docker-compose.yml / ci.yml
+chromadb==1.5.9
 sentence-transformers>=2.2.0
 tenacity>=8.2.0
 tiktoken>=0.5.0
