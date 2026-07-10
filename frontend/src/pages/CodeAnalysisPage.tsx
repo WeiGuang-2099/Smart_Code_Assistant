@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { apiFetch } from '../lib/apiClient'
 import { useAuth } from '../contexts/AuthContext'
 import CodeGraph from '../components/CodeGraph'
 import type { GraphNode, GraphEdge } from '../components/CodeGraph'
