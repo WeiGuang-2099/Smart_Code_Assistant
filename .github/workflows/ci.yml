@@ -90,7 +90,7 @@ jobs:
 
       - name: Upload coverage report (HTML)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-coverage-html
           path: backend-fastapi/htmlcov/
@@ -227,7 +227,7 @@ jobs:
             --gate evals/thresholds.smoke.json
       - name: Upload evals results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: evals-results
           path: evals/results/*.json
