@@ -42,9 +42,9 @@ class TestBuildCodeGraph:
         })
         with patch("app.services.code_graph.tools.get_graph_builder", return_value=builder):
             out = _run(build_code_graph, code="x", language="python", module_path="m")
-        assert "图谱构建完成" in out
-        assert "函数: 3" in out
-        assert "类: 1" in out
+        assert "Code knowledge graph built" in out
+        assert "Functions: 3" in out
+        assert "Classes: 1" in out
 
     def test_failure_path_returns_error_text(self):
         builder = MagicMock()
@@ -55,13 +55,13 @@ class TestBuildCodeGraph:
         })
         with patch("app.services.code_graph.tools.get_graph_builder", return_value=builder):
             out = _run(build_code_graph, code="x", language="python")
-        assert "图谱构建失败" in out
+        assert "Graph build failed" in out
         assert "parse exploded" in out
 
     def test_exception_caught_and_reported(self):
         with patch("app.services.code_graph.tools.get_graph_builder", side_effect=RuntimeError("boom")):
             out = _run(build_code_graph, code="x", language="python")
-        assert "失败" in out
+        assert "failed" in out
         assert "boom" in out
 
 
@@ -76,7 +76,7 @@ class TestQueryDependencies:
         })
         with patch("app.services.code_graph.tools.get_retriever", return_value=retriever):
             out = _run(query_code_dependencies, entity_name="foo", dep_type="all")
-        assert "依赖关系查询" in out
+        assert "Dependency query" in out
         assert "a (ma)" in out
         assert "b (mb)" in out
 
@@ -85,12 +85,12 @@ class TestQueryDependencies:
         retriever.get_dependencies = AsyncMock(return_value={"callers": [], "callees": []})
         with patch("app.services.code_graph.tools.get_retriever", return_value=retriever):
             out = _run(query_code_dependencies, entity_name="foo", dep_type="all")
-        assert "未找到依赖关系" in out
+        assert "No dependencies found" in out
 
     def test_exception_path(self):
         with patch("app.services.code_graph.tools.get_retriever", side_effect=RuntimeError("nope")):
             out = _run(query_code_dependencies, entity_name="foo", dep_type="all")
-        assert "失败" in out
+        assert "failed" in out
 
 
 # ----- analyze_impact -----
@@ -104,8 +104,8 @@ class TestAnalyzeImpact:
         })
         with patch("app.services.code_graph.tools.get_retriever", return_value=retriever):
             out = _run(analyze_impact, entity_name="f", change_type="modify")
-        assert "低风险" in out
-        assert "影响范围: 2" in out
+        assert "Low risk" in out
+        assert "Impact scope: 2" in out
 
     def test_high_risk_classification(self):
         retriever = MagicMock()
@@ -115,14 +115,14 @@ class TestAnalyzeImpact:
         })
         with patch("app.services.code_graph.tools.get_retriever", return_value=retriever):
             out = _run(analyze_impact, entity_name="f")
-        assert "高风险" in out
+        assert "High risk" in out
 
     def test_no_impact_shows_clean_message(self):
         retriever = MagicMock()
         retriever.analyze_impact = AsyncMock(return_value={"total_count": 0, "impacted": []})
         with patch("app.services.code_graph.tools.get_retriever", return_value=retriever):
             out = _run(analyze_impact, entity_name="f")
-        assert "未发现受影响的代码" in out
+        assert "No affected code found" in out
 
 
 # ----- find_code_paths -----
@@ -135,7 +135,7 @@ class TestFindCodePaths:
         ])
         with patch("app.services.code_graph.tools.get_retriever", return_value=retriever):
             out = _run(find_code_paths, source="a", target="c")
-        assert "路径 1" in out
+        assert "Path 1" in out
         assert "a" in out and "b" in out and "c" in out
 
     def test_no_paths_message(self):
@@ -143,7 +143,7 @@ class TestFindCodePaths:
         retriever.find_paths = AsyncMock(return_value=[])
         with patch("app.services.code_graph.tools.get_retriever", return_value=retriever):
             out = _run(find_code_paths, source="a", target="z")
-        assert "未找到连接路径" in out
+        assert "No connecting path found" in out
 
 
 # ----- search_code_semantic -----
@@ -159,7 +159,7 @@ class TestSearchSemantic:
         })
         with patch("app.services.code_graph.tools.get_retriever", return_value=retriever):
             out = _run(search_code_semantic, query="auth")
-        assert "相关函数" in out
+        assert "Related functions" in out
         assert "f (m)" in out
         assert "C (m)" in out
 
@@ -170,14 +170,14 @@ class TestSearchSemantic:
         })
         with patch("app.services.code_graph.tools.get_retriever", return_value=retriever):
             out = _run(search_code_semantic, query="auth")
-        assert "未找到相关代码实体" in out
+        assert "No matching code entities found" in out
 
     def test_list_shape_means_no_chroma(self):
         retriever = MagicMock()
         retriever.retrieve = AsyncMock(return_value={"semantic_results": []})
         with patch("app.services.code_graph.tools.get_retriever", return_value=retriever):
             out = _run(search_code_semantic, query="auth")
-        assert "ChromaDB" in out or "未找到" in out
+        assert "ChromaDB" in out or "No matching" in out
 
 
 # ----- Registry -----
