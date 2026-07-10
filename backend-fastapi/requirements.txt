@@ -34,7 +34,7 @@ tenacity>=8.2.0
 tiktoken>=0.5.0
 # OpenTelemetry for APM and distributed tracing
 opentelemetry-api>=1.20.0
-opentelemetry-sdk>=1.20.0
+opentelemetry-sdk>=1.43.0
 opentelemetry-exporter-otlp-proto-grpc>=1.20.0
 opentelemetry-exporter-jaeger-proto-grpc>=1.21.0
 # Sentry (optional - only initialised if SENTRY_DSN is set)
