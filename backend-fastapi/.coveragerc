@@ -4,6 +4,8 @@ branch = True
 omit =
     app/__init__.py
     app/main.py
+    # stdio entrypoint binding; importable only in venv-mcp (mcp SDK), tested there
+    app/mcp/server.py
     app/database.py
     app/api/__init__.py
     app/services/__init__.py
