@@ -50,8 +50,9 @@ services:
       - smart-code-assistant-network
 
   # ChromaDB 向量数据库 - 用于代码语义搜索
+  # 版本与 requirements.txt 的 chromadb 客户端保持一致, 升级时两边一起动
   chromadb:
-    image: chromadb/chroma:latest
+    image: chromadb/chroma:1.5.9
     container_name: smart-code-assistant-chromadb
     restart: unless-stopped
     environment:
@@ -62,7 +63,8 @@ services:
     volumes:
       - chromadb-data:/chroma/chroma
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/v1/heartbeat || exit 1"]
+      # 1.x 镜像不带 curl/wget 且移除了 v1 API, 用 bash /dev/tcp 探测 v2 heartbeat
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8000; printf \"GET /api/v2/heartbeat HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3; grep -q \"200 OK\" <&3'"]
       interval: 30s
       timeout: 10s
       retries: 3

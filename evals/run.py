@@ -18,6 +18,7 @@ from evals.config import (
     DEFAULT_TOP_K,
     EVAL_PROJECT_ID,
 )
+from evals.gate import GateConfigError, check_thresholds, load_thresholds
 from evals.generation import GEN_PROMPT_VERSION
 from evals.golden_set.validate import validate_golden_set
 from evals.reporter import compute_aggregate, compute_generation_aggregate, render_table, write_json
@@ -54,6 +55,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                    help="Override judge model (default: glm-5.1, kept distinct from the generator)")
     p.add_argument("--gen-timeout", type=float, default=DEFAULT_GEN_TIMEOUT_S,
                    help="Per-case generation+judge budget in seconds")
+    p.add_argument("--gate", type=Path, default=None,
+                   help="Thresholds JSON file; exit 1 if any aggregate metric "
+                        "falls below its configured floor")
     return p.parse_args(argv)
 
 
@@ -83,16 +87,21 @@ async def _do_index(corpus_path: Path, project_id: int) -> None:
     dicts ({path, content, language}), and call CodeGraphBuilder.build_from_files.
 
     Path strings written into ``module_path`` here are what later flow into
-    chunk.metadata.module_path during retrieval. To keep matching simple we
-    store them relative to ``corpus_path.parent`` so that, for example, a
-    fixture file lives under ``mini_repo/auth.py`` rather than an absolute
-    OS path.
+    chunk.metadata.module_path during retrieval, and retrieval metrics compare
+    them to the golden set's ``expected_files`` by exact string match. The
+    golden-set convention (see golden_set.validate) resolves paths from repo
+    root, so corpora inside the repo are stored repo-root-relative, e.g.
+    ``evals/fixtures/mini_repo/auth.py``. A corpus outside the repo falls back
+    to ``corpus_path.parent``-relative.
     """
     from app.services.code_graph.graph_builder import CodeGraphBuilder  # noqa: WPS433
 
+    corpus_root = corpus_path.resolve()
+    base = REPO_ROOT if corpus_root.is_relative_to(REPO_ROOT) else corpus_root.parent
+
     files: list[dict[str, str]] = []
-    for py_file in sorted(corpus_path.rglob("*.py")):
-        rel_path = py_file.relative_to(corpus_path.parent).as_posix()
+    for py_file in sorted(corpus_root.rglob("*.py")):
+        rel_path = py_file.relative_to(base).as_posix()
         files.append({
             "path": rel_path,
             "content": py_file.read_text(encoding="utf-8"),
@@ -112,6 +121,15 @@ async def _do_index(corpus_path: Path, project_id: int) -> None:
 
 
 async def main_async(args: argparse.Namespace) -> int:
+    # 0. Load gate thresholds first so a bad config fails before the run
+    thresholds = None
+    if args.gate:
+        try:
+            thresholds = load_thresholds(args.gate)
+        except GateConfigError as exc:
+            print(f"ERROR: --gate: {exc}", file=sys.stderr)
+            return 2
+
     # 1. Validate golden set
     try:
         errors, warnings = validate_golden_set(args.golden, REPO_ROOT)
@@ -216,19 +234,31 @@ async def main_async(args: argparse.Namespace) -> int:
     safe_ts = timestamp.replace(":", "").replace("-", "")
     out_path = args.output_dir / f"{safe_ts}.json"
 
+    wrote = True
     try:
         write_json(out_path, meta, results, aggregate)
     except OSError as exc:
         # Still print metrics to stdout so a write failure doesn't lose info.
         print(f"WARN: could not write result file: {exc}", file=sys.stderr)
-        print(render_table(aggregate))
-        return 0
+        wrote = False
 
-    if args.quiet:
+    if args.quiet and wrote:
         print(str(out_path))
     else:
         print(render_table(aggregate))
-        print(f"\nWrote {out_path}")
+        if wrote:
+            print(f"\nWrote {out_path}")
+
+    # 6. Regression gate (checklist: exit non-zero when a metric drops below floor)
+    if thresholds is not None:
+        failures = check_thresholds(aggregate, thresholds)
+        if failures:
+            for failure in failures:
+                print(f"GATE FAIL: {failure}", file=sys.stderr)
+            print(f"GATE: FAILED ({len(failures)} threshold violation(s), "
+                  f"config: {args.gate})", file=sys.stderr)
+            return 1
+        print("GATE: PASSED")
     return 0
 
 

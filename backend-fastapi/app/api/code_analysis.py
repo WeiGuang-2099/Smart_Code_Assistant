@@ -219,7 +219,7 @@ async def full_analysis(
                 "language": language
             })
         except Exception as e:
-            response.structure = f"结构分析失败: {str(e)}"
+            response.structure = f"Structure analysis failed: {str(e)}"
 
         try:
             response.smells = detect_code_smells.invoke({
@@ -235,7 +235,7 @@ async def full_analysis(
             else:
                 scores.append(70)
         except Exception as e:
-            response.smells = f"坏味道检测失败: {str(e)}"
+            response.smells = f"Code smell detection failed: {str(e)}"
             scores.append(50)
 
         try:
@@ -255,7 +255,7 @@ async def full_analysis(
             else:
                 scores.append(70)
         except Exception as e:
-            response.complexity = f"复杂度分析失败: {str(e)}"
+            response.complexity = f"Complexity analysis failed: {str(e)}"
             scores.append(50)
 
         try:
@@ -275,7 +275,7 @@ async def full_analysis(
             else:
                 scores.append(80)
         except Exception as e:
-            response.security = f"安全检测失败: {str(e)}"
+            response.security = f"Security check failed: {str(e)}"
             scores.append(50)
 
     # 2. 构建图谱
@@ -288,15 +288,9 @@ async def full_analysis(
             })
             response.graph_built = "✅" in graph_result or "📊" in graph_result
 
-            # 提取统计信息
-            if "创建节点:" in graph_result:
-                import re
-                nodes_match = re.search(r'创建节点:\s*(\d+)', graph_result)
-                rels_match = re.search(r'创建关系:\s*(\d+)', graph_result)
-                response.graph_stats = {
-                    "nodes": int(nodes_match.group(1)) if nodes_match else 0,
-                    "relationships": int(rels_match.group(1)) if rels_match else 0,
-                }
+            stats = _extract_graph_stats(graph_result)
+            if stats is not None:
+                response.graph_stats = stats
         except Exception as e:
             response.graph_built = False
             response.graph_stats = {"error": str(e)}
@@ -400,53 +394,66 @@ async def query_code_graph(
 # Helper Functions
 # ============================================================================
 
+def _extract_graph_stats(graph_result: str) -> Optional[Dict[str, int]]:
+    """Parse node/relationship counts out of build_code_graph's text output."""
+    if "Nodes created:" not in graph_result:
+        return None
+    import re
+    nodes_match = re.search(r"Nodes created:\s*(\d+)", graph_result)
+    rels_match = re.search(r"Relationships created:\s*(\d+)", graph_result)
+    return {
+        "nodes": int(nodes_match.group(1)) if nodes_match else 0,
+        "relationships": int(rels_match.group(1)) if rels_match else 0,
+    }
+
+
 def _generate_summary(response: FullAnalysisResponse) -> str:
-    """生成分析摘要"""
+    """Build the one-line analysis summary shown above the results."""
     parts = []
 
     if response.overall_score >= 80:
-        parts.append("✅ 代码质量良好")
+        parts.append("✅ Good code quality")
     elif response.overall_score >= 60:
-        parts.append("⚠️ 代码质量一般，有改进空间")
+        parts.append("⚠️ Average code quality - room for improvement")
     else:
-        parts.append("❌ 代码质量较差，建议重构")
+        parts.append("❌ Poor code quality - refactoring recommended")
 
     if response.security and "🔴" in response.security:
-        parts.append("存在安全问题需要立即处理")
+        parts.append("Security issues need immediate attention")
     elif response.security and "🟠" in response.security:
-        parts.append("存在潜在安全风险")
+        parts.append("Potential security risks present")
 
     if response.complexity and "🔴" in response.complexity:
-        parts.append("代码复杂度过高")
+        parts.append("Code complexity is too high")
 
     if response.graph_built:
-        parts.append("已构建代码知识图谱")
+        parts.append("Code knowledge graph built")
 
-    return "。".join(parts) + "。"
+    return ". ".join(parts) + "."
 
 
 def _generate_recommendations(response: FullAnalysisResponse) -> List[str]:
-    """生成改进建议"""
+    """Build the improvement recommendations list."""
     recommendations = []
 
     if response.security and "🔴" in response.security:
-        recommendations.append("🔴 优先修复高危安全问题")
+        recommendations.append("🔴 Fix high-severity security issues first")
 
     if response.complexity and "🔴" in response.complexity:
-        recommendations.append("降低代码复杂度，拆分大函数")
+        recommendations.append("Reduce code complexity by splitting large functions")
 
     if response.smells and "⚠️" in response.smells:
         warning_count = response.smells.count("⚠️")
         if warning_count > 5:
-            recommendations.append("重构代码以减少代码坏味道")
+            recommendations.append("Refactor to reduce code smells")
 
     if response.overall_score < 60:
-        recommendations.append("考虑进行全面重构")
+        recommendations.append("Consider a broader refactor")
 
     if response.graph_built:
-        recommendations.append("利用知识图谱分析代码依赖关系")
+        recommendations.append("Use the knowledge graph to explore code dependencies")
 
     if not recommendations:
-        recommendations.append("继续保持良好的编码习惯")
+        recommendations.append("Keep up the good coding practices")
 
     return recommendations[:5]

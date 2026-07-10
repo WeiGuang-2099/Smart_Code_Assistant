@@ -38,3 +38,6 @@ opentelemetry-api>=1.20.0
 opentelemetry-sdk>=1.20.0
 # Sentry (optional - only initialised if SENTRY_DSN is set)
 sentry-sdk[fastapi]>=2.0.0
+# CI tooling - pinned so a new lint release cannot break CI unrelated to the change
+ruff==0.15.21
+pytest-timeout==2.4.0

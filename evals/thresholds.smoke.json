@@ -1,0 +1,11 @@
+{
+  "overall": {
+    "hit_rate@5": 0.75,
+    "recall@5": 0.65,
+    "mrr": 0.3,
+    "graph_neighbor_recall": 0.85,
+    "graph_traversal_correctness": 0.85,
+    "hybrid_hit_rate@5": 0.8
+  },
+  "max_errors": 0
+}

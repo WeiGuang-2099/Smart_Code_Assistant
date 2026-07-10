@@ -1,4 +1,11 @@
-"""Registration smoke test for the FastMCP server (offline, no transport)."""
+"""Registration smoke test for the FastMCP server (offline, no transport).
+
+The mcp SDK lives only in the dedicated venv-mcp environment (it needs
+pydantic>=2.11, which conflicts with the web stack's pin) - skip when absent.
+"""
+import pytest
+
+pytest.importorskip("mcp")
 
 
 async def test_all_six_tools_registered():

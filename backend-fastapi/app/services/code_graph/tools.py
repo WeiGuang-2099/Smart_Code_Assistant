@@ -35,15 +35,15 @@ def _run_async(coro):
 @tool
 def build_code_graph(code: str, language: str = "python", module_path: str = "unknown") -> str:
     """
-    构建代码知识图谱，提取函数、类、模块及其关系
+    Build a code knowledge graph extracting functions, classes, modules and their relationships.
 
     Args:
-        code: 源代码
-        language: 编程语言 (默认: python)
-        module_path: 模块路径 (默认: unknown)
+        code: Source code
+        language: Programming language (default: python)
+        module_path: Module path (default: unknown)
 
     Returns:
-        图谱构建结果和统计信息
+        Graph build result and statistics
     """
     try:
         builder = get_graph_builder()
@@ -60,38 +60,38 @@ def build_code_graph(code: str, language: str = "python", module_path: str = "un
         if result["success"]:
             stats = result["stats"]
             entities = result["entities"]
-            return f"""📊 代码知识图谱构建完成 [{language}]
+            return f"""📊 Code knowledge graph built [{language}]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📈 实体统计:
-  • 函数: {entities['functions']} 个
-  • 类: {entities['classes']} 个
-  • 导入: {entities['imports']} 个
+📈 Entities:
+  • Functions: {entities['functions']}
+  • Classes: {entities['classes']}
+  • Imports: {entities['imports']}
 
-🔗 关系统计:
-  • 创建节点: {stats['functions_created'] + stats['classes_created']} 个
-  • 创建关系: {stats['relationships_created']} 条
-  • 向量索引: {stats.get('vector_indexed', 0)} 个
+🔗 Relationships:
+  • Nodes created: {stats['functions_created'] + stats['classes_created']}
+  • Relationships created: {stats['relationships_created']}
+  • Vector indexed: {stats.get('vector_indexed', 0)}
 
-✅ 图谱构建成功！可以使用其他工具查询依赖关系和影响分析。"""
+✅ Graph build complete. Use the query tools to explore dependencies and impact."""
         else:
-            return f"❌ 图谱构建失败: {result.get('error', '未知错误')}"
+            return f"❌ Graph build failed: {result.get('error', 'unknown error')}"
 
     except Exception as e:
         logger.error(f"build_code_graph error: {e}")
-        return f"❌ 图谱构建失败: {str(e)}"
+        return f"❌ Graph build failed: {str(e)}"
 
 
 @tool
 def query_code_dependencies(entity_name: str, dep_type: str = "all") -> str:
     """
-    查询代码实体的依赖关系
+    Query the dependency relationships of a code entity.
 
     Args:
-        entity_name: 实体名称 (函数名/类名)
-        dep_type: 依赖类型 (callers=谁调用它, callees=它调用谁, all=全部)
+        entity_name: Entity name (function/class)
+        dep_type: Dependency type (callers=who calls it, callees=what it calls, all=both)
 
     Returns:
-        依赖关系图谱
+        Dependency listing
     """
     try:
         retriever = get_retriever()
@@ -101,43 +101,43 @@ def query_code_dependencies(entity_name: str, dep_type: str = "all") -> str:
 
         result = _run_async(_query())
 
-        output = f"""🔍 依赖关系查询 [{entity_name}]
+        output = f"""🔍 Dependency query [{entity_name}]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"""
 
         callers = result.get("callers", [])
         callees = result.get("callees", [])
 
         if dep_type in ["callers", "all"] and callers:
-            output += f"\n\n📞 被调用者 ({len(callers)} 个):"
+            output += f"\n\n📞 Callers ({len(callers)}):"
             for c in callers[:10]:
                 output += f"\n  • {c.get('name', '')} ({c.get('module_path', '')})"
 
         if dep_type in ["callees", "all"] and callees:
-            output += f"\n\n📲 调用目标 ({len(callees)} 个):"
+            output += f"\n\n📲 Callees ({len(callees)}):"
             for c in callees[:10]:
                 output += f"\n  • {c.get('name', '')} ({c.get('module_path', '')})"
 
         if not callers and not callees:
-            output += "\n\n⚠️ 未找到依赖关系"
+            output += "\n\n⚠️ No dependencies found"
 
         return output
 
     except Exception as e:
         logger.error(f"query_code_dependencies error: {e}")
-        return f"❌ 查询失败: {str(e)}"
+        return f"❌ Query failed: {str(e)}"
 
 
 @tool
 def analyze_impact(entity_name: str, change_type: str = "modify") -> str:
     """
-    分析代码变更的影响范围
+    Analyze the impact scope of a code change.
 
     Args:
-        entity_name: 变更的实体名称 (函数名/类名)
-        change_type: 变更类型 (modify=修改, delete=删除, rename=重命名)
+        entity_name: Name of the changed entity (function/class)
+        change_type: Change type (modify, delete, rename)
 
     Returns:
-        受影响的代码实体列表
+        List of affected code entities
     """
     try:
         retriever = get_retriever()
@@ -150,14 +150,14 @@ def analyze_impact(entity_name: str, change_type: str = "modify") -> str:
         impacted = result.get("impacted", [])
         total_count = result.get("total_count", 0)
 
-        output = f"""🎯 影响范围分析 [{entity_name}]
+        output = f"""🎯 Impact analysis [{entity_name}]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📝 变更类型: {change_type}
-📊 影响范围: {total_count} 个实体
+📝 Change type: {change_type}
+📊 Impact scope: {total_count} entities
 """
 
         if impacted:
-            output += "\n⚠️ 受影响的代码:"
+            output += "\n⚠️ Affected code:"
             for item in impacted[:15]:
                 distance = item.get("distance", 1)
                 module = item.get("module_path", "")
@@ -170,37 +170,37 @@ def analyze_impact(entity_name: str, change_type: str = "modify") -> str:
                     output += f"\n  {'  ' * distance}• {name} ({module})"
 
             if len(impacted) > 15:
-                output += f"\n  ... 还有 {len(impacted) - 15} 个"
+                output += f"\n  ... and {len(impacted) - 15} more"
 
-            # 风险评估
+            # Risk assessment
             if total_count > 20:
-                output += "\n\n🔴 高风险变更: 影响范围较大，建议仔细测试"
+                output += "\n\n🔴 High risk: large impact scope, test thoroughly before shipping"
             elif total_count > 10:
-                output += "\n\n🟡 中等风险: 建议进行回归测试"
+                output += "\n\n🟡 Medium risk: run regression tests"
             else:
-                output += "\n\n🟢 低风险: 影响范围有限"
+                output += "\n\n🟢 Low risk: limited impact scope"
         else:
-            output += "\n✅ 未发现受影响的代码"
+            output += "\n✅ No affected code found"
 
         return output
 
     except Exception as e:
         logger.error(f"analyze_impact error: {e}")
-        return f"❌ 分析失败: {str(e)}"
+        return f"❌ Impact analysis failed: {str(e)}"
 
 
 @tool
 def find_code_paths(source: str, target: str, max_depth: int = 5) -> str:
     """
-    查找两个代码实体之间的调用路径
+    Find call paths between two code entities.
 
     Args:
-        source: 起始实体名称
-        target: 目标实体名称
-        max_depth: 最大搜索深度 (默认: 5)
+        source: Starting entity name
+        target: Target entity name
+        max_depth: Maximum search depth (default: 5)
 
     Returns:
-        调用路径列表
+        List of call paths
     """
     try:
         retriever = get_retriever()
@@ -210,13 +210,13 @@ def find_code_paths(source: str, target: str, max_depth: int = 5) -> str:
 
         paths = _run_async(_find())
 
-        output = f"""🛤️ 调用路径查找 [{source}] → [{target}]
+        output = f"""🛤️ Call path search [{source}] → [{target}]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"""
 
         if paths:
-            output += f"\n\n找到 {len(paths)} 条路径:\n"
+            output += f"\n\nFound {len(paths)} path(s):\n"
             for i, path in enumerate(paths[:5], 1):
-                output += f"\n路径 {i}:"
+                output += f"\nPath {i}:"
                 for j, node in enumerate(path):
                     name = node.get("name", "unknown")
                     class_name = node.get("class_name")
@@ -226,29 +226,29 @@ def find_code_paths(source: str, target: str, max_depth: int = 5) -> str:
                         output += f" → {name}"
 
             if len(paths) > 5:
-                output += f"\n\n... 还有 {len(paths) - 5} 条路径"
+                output += f"\n\n... and {len(paths) - 5} more paths"
         else:
-            output += "\n\n❌ 未找到连接路径"
+            output += "\n\n❌ No connecting path found"
 
         return output
 
     except Exception as e:
         logger.error(f"find_code_paths error: {e}")
-        return f"❌ 路径查找失败: {str(e)}"
+        return f"❌ Path search failed: {str(e)}"
 
 
 @tool
 def search_code_semantic(query: str, project_id: int = 1, top_k: int = 10) -> str:
     """
-    语义搜索代码实体
+    Semantic search over code entities.
 
     Args:
-        query: 自然语言查询 (如: "处理用户认证的函数")
-        project_id: 项目ID (默认: 1)
-        top_k: 返回结果数量 (默认: 10)
+        query: Natural-language query (e.g. "functions that handle user auth")
+        project_id: Project id (default: 1)
+        top_k: Number of results to return (default: 10)
 
     Returns:
-        匹配的代码实体列表
+        List of matching code entities
     """
     try:
         retriever = get_retriever()
@@ -263,52 +263,50 @@ def search_code_semantic(query: str, project_id: int = 1, top_k: int = 10) -> st
 
         result = _run_async(_search())
 
-        output = f"""🔎 语义搜索结果 [{query}]
+        output = f"""🔎 Semantic search results [{query}]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"""
 
         semantic_results = result.get("semantic_results", {})
 
-        # 处理 semantic_results 可能是列表或字典的情况
+        # semantic_results may be a list (failed / empty search) or a dict
         if isinstance(semantic_results, list):
-            # 如果是列表，说明搜索失败或无结果
             if not semantic_results:
-                output += "\n\n⚠️ 未找到相关代码实体（可能 ChromaDB 未连接或无数据）"
+                output += "\n\n⚠️ No matching code entities found (ChromaDB may be unavailable or empty)"
                 return output
-            # 如果是非空列表，尝试从第一项获取
             semantic_results = {}
 
         functions = semantic_results.get("functions", [])
         classes = semantic_results.get("classes", [])
 
         if functions:
-            output += f"\n\n🔧 相关函数 ({len(functions)} 个):"
+            output += f"\n\n🔧 Related functions ({len(functions)}):"
             for func in functions[:8]:
                 metadata = func.get("metadata", {})
                 name = metadata.get("name", "unknown")
                 module = metadata.get("module_path", "")
                 score = func.get("relevance_score", 0)
-                output += f"\n  • {name} ({module}) - 相关度: {score:.2f}"
+                output += f"\n  • {name} ({module}) - relevance: {score:.2f}"
 
         if classes:
-            output += f"\n\n📦 相关类 ({len(classes)} 个):"
+            output += f"\n\n📦 Related classes ({len(classes)}):"
             for cls in classes[:8]:
                 metadata = cls.get("metadata", {})
                 name = metadata.get("name", "unknown")
                 module = metadata.get("module_path", "")
                 score = cls.get("relevance_score", 0)
-                output += f"\n  • {name} ({module}) - 相关度: {score:.2f}"
+                output += f"\n  • {name} ({module}) - relevance: {score:.2f}"
 
         if not functions and not classes:
-            output += "\n\n⚠️ 未找到相关代码实体"
+            output += "\n\n⚠️ No matching code entities found"
 
         return output
 
     except Exception as e:
         logger.error(f"search_code_semantic error: {e}")
-        return f"❌ 搜索失败: {str(e)}"
+        return f"❌ Search failed: {str(e)}"
 
 
-# 导出所有工具
+# Exported tool registry
 code_graph_tools = [
     build_code_graph,
     query_code_dependencies,
@@ -317,11 +315,11 @@ code_graph_tools = [
     search_code_semantic,
 ]
 
-# 工具描述映射
+# Tool description map
 code_graph_tool_descriptions = {
-    "build_code_graph": "构建代码知识图谱，提取函数、类、模块及其关系",
-    "query_code_dependencies": "查询代码实体的依赖关系（调用者/被调用者）",
-    "analyze_impact": "分析代码变更的影响范围",
-    "find_code_paths": "查找两个代码实体之间的调用路径",
-    "search_code_semantic": "使用自然语言语义搜索代码实体",
+    "build_code_graph": "Build a code knowledge graph of functions, classes, modules and their relationships",
+    "query_code_dependencies": "Query the dependencies of a code entity (callers/callees)",
+    "analyze_impact": "Analyze the impact scope of a code change",
+    "find_code_paths": "Find call paths between two code entities",
+    "search_code_semantic": "Search code entities with a natural-language query",
 }
