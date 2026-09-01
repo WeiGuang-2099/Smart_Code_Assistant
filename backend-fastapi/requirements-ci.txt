@@ -35,7 +35,7 @@ tiktoken>=0.5.0
 # OpenTelemetry - core only; exporters not needed in CI (no OTLP/Jaeger endpoint).
 # The telemetry.py code falls through to ConsoleSpanExporter when exporters are missing.
 opentelemetry-api>=1.20.0
-opentelemetry-sdk>=1.20.0
+opentelemetry-sdk>=1.43.0
 # Sentry (optional - only initialised if SENTRY_DSN is set)
 sentry-sdk[fastapi]>=2.0.0
 # CI tooling - pinned so a new lint release cannot break CI unrelated to the change
