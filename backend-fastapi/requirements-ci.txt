@@ -30,7 +30,7 @@ markdown-it-py>=3.0.0
 mdit-py-plugins>=0.4.0
 # Code GraphRAG - neo4j driver only (chromadb/sentence-transformers mocked in tests)
 neo4j>=5.15.0
-tenacity>=8.2.0
+tenacity>=9.1.4
 tiktoken>=0.5.0
 # OpenTelemetry - core only; exporters not needed in CI (no OTLP/Jaeger endpoint).
 # The telemetry.py code falls through to ConsoleSpanExporter when exporters are missing.

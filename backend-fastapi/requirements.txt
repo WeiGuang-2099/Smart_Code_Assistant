@@ -30,7 +30,7 @@ neo4j>=5.15.0
 chromadb==1.5.9
 langchain-community>=0.3.0
 sentence-transformers>=2.2.0
-tenacity>=8.2.0
+tenacity>=9.1.4
 tiktoken>=0.5.0
 # OpenTelemetry for APM and distributed tracing
 opentelemetry-api>=1.20.0
